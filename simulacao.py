@@ -1,7 +1,7 @@
 import gestor_mapa as gm
 import motor_simulacao as ms
 import visualizador as vis
-import view_consola as vc
+import view as vc
 import time
 import json
 import os
