@@ -1,0 +1,15 @@
+# Ambiente Virtual (NUNCA adicionar)
+meu_Ambiente/
+
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Ficheiros de Dados Gerados (Opcional, mas recomendado)
+# O código-fonte deve gerar isto, não o Git
+*.graphml
+*.json
+
+# Ficheiros de IDE/SO
+.vscode/
+.DS_Store
