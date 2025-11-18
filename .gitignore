@@ -8,6 +8,7 @@ __pycache__/
 # O código-fonte deve gerar isto, não o Git
 *.graphml
 *.json
+!frota.json
 
 # Ficheiros de IDE/SO
 .vscode/

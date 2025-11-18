@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "tipo_motor": "gasolina",
+    "capacidade": 4,
+    "autonomia_max": 600
+  },
+  {
+    "id": 2,
+    "tipo_motor": "eletrico",
+    "capacidade": 6,
+    "autonomia_max": 350
+  },
+  {
+    "id": 3,
+    "tipo_motor": "gasolina",
+    "capacidade": 6,
+    "autonomia_max": 700
+  },
+  {
+    "id": 4,
+    "tipo_motor": "eletrico",
+    "capacidade": 4,
+    "autonomia_max": 300
+  },
+  {
+    "id": 5,
+    "tipo_motor": "eletrico",
+    "capacidade": 4,
+    "autonomia_max": 380
+  }
+]

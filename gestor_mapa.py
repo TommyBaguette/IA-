@@ -6,8 +6,11 @@ import os
 import random
 import math
 
+# ... (funções criar_mapa_base, criar_zonas_recolha, carregar_dados, verificar_ficheiros... ficam iguais) ...
+# ... (copia apenas o que está abaixo se não quiseres substituir o ficheiro todo) ...
+
 def criar_mapa_base():
-    ox.settings.log_console = True
+    ox.settings.log_console = False # Alterado para False
     ox.settings.use_cache = True
     
     lat, lon = 41.1821, -8.6891
@@ -70,7 +73,7 @@ def criar_mapa_base():
 def criar_zonas_recolha():
     print("\n=== A CRIAR ZONAS DE RECOLHA DE CLIENTES ===")
     
-    ox.settings.log_console = True
+    ox.settings.log_console = False # Alterado para False
     ox.settings.use_cache = True
     lat, lon = 41.1821, -8.6891
     dist = 5000
@@ -162,7 +165,81 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     
     return R * c
 
+def filtrar_pontos_com_hierarquia(pois_frota_data, zonas_data, distancia_minima):
+    """
+    Função de lógica pura. Recebe os dados brutos e retorna as listas filtradas.
+    """
+    print(f"A aplicar filtragem hierárquica com distância de {distancia_minima}m...")
+    
+    plotar_bombas = []
+    plotar_carregadores = []
+    plotar_recolha = []
+
+    # Prioridade 1: Bombas (Gasolina)
+    plotar_bombas = pois_frota_data.get("bombas_gasolina", [])
+    print(f"  - Prioridade 1 (Bombas): {len(plotar_bombas)} pontos aceites.")
+
+    # Prioridade 2: Carregadores (Elétrico)
+    carregadores_brutos = pois_frota_data.get("carregadores_eletricos", [])
+    for carregador in carregadores_brutos:
+        demasiado_perto = False
+        lon_novo, lat_novo = carregador["longitude"], carregador["latitude"]
+        
+        for bomba in plotar_bombas:
+            dist = calcular_distancia(lat_novo, lon_novo, bomba["latitude"], bomba["longitude"])
+            if dist < distancia_minima:
+                demasiado_perto = True
+                break
+        
+        if not demasiado_perto:
+            plotar_carregadores.append(carregador)
+    
+    print(f"  - Prioridade 2 (Carregadores): {len(plotar_carregadores)} pontos aceites (de {len(carregadores_brutos)}).")
+
+    # Prioridade 3: Pontos de Recolha
+    pontos_recolha_brutos = []
+    for categoria_de_pontos in zonas_data.values():
+        pontos_recolha_brutos.extend(categoria_de_pontos)
+    
+    pontos_prioritarios = plotar_bombas + plotar_carregadores
+    ids_de_recolha_aceites = set()
+
+    for ponto_novo in pontos_recolha_brutos:
+        demasiado_perto = False
+        
+        if ponto_novo["id_no"] in ids_de_recolha_aceites:
+            continue
+        
+        lon_novo, lat_novo = ponto_novo["longitude"], ponto_novo["latitude"]
+
+        for poi in pontos_prioritarios:
+            dist = calcular_distancia(lat_novo, lon_novo, poi["latitude"], poi["longitude"])
+            if dist < distancia_minima:
+                demasiado_perto = True
+                break
+        
+        if demasiado_perto:
+            continue
+
+        for ponto_aceite in plotar_recolha:
+            dist = calcular_distancia(lat_novo, lon_novo, ponto_aceite["latitude"], ponto_aceite["longitude"])
+            if dist < distancia_minima:
+                demasiado_perto = True
+                break
+
+        if not demasiado_perto:
+            plotar_recolha.append(ponto_novo)
+            ids_de_recolha_aceites.add(ponto_novo["id_no"])
+
+    print(f"  - Prioridade 3 (Recolha): {len(plotar_recolha)} pontos aceites (de {len(pontos_recolha_brutos)}).")
+    
+    return plotar_bombas, plotar_carregadores, plotar_recolha
+
 def visualizar_mapa_com_pois():
+    """
+    Carrega e mostra o mapa estático completo, já filtrado.
+    """
+    
     print("A verificar ficheiros para visualização completa...")
     DISTANCIA_MINIMA_METROS = 250
 
@@ -181,76 +258,20 @@ def visualizar_mapa_com_pois():
     except FileNotFoundError:
         print("  - Aviso: 'pontos_interesse_matoshinhos.json' não encontrado. (Executa Opção 1)")
 
-    pontos_recolha_brutos = []
+    zonas_data = {}
     try:
         with open("zonas_recolha_matosinhos.json", "r", encoding="utf-8") as f:
             zonas_data = json.load(f)
-        
-        for categoria_de_pontos in zonas_data.values():
-            pontos_recolha_brutos.extend(categoria_de_pontos)
-        
-        print(f"- Zonas de recolha carregadas ({len(pontos_recolha_brutos)} pontos brutos).")
-        
+        print(f"- Zonas de recolha carregadas.")
     except FileNotFoundError:
         print("  - Aviso: 'zonas_recolha_matosinhos.json' não encontrado. (Executa Opção 2)")
 
-    print(f"A aplicar filtragem hierárquica com distância de {DISTANCIA_MINIMA_METROS}m...")
+    # --- APLICAR FILTRAGEM ---
+    plotar_bombas, plotar_carregadores, plotar_recolha = filtrar_pontos_com_hierarquia(
+        pois_frota_data, zonas_data, DISTANCIA_MINIMA_METROS
+    )
 
-    plotar_bombas = []
-    plotar_carregadores = []
-    plotar_recolha = []
-
-    plotar_bombas = pois_frota_data.get("bombas_gasolina", [])
-    print(f"  - Prioridade 1 (Bombas): {len(plotar_bombas)} pontos aceites.")
-
-    carregadores_brutos = pois_frota_data.get("carregadores_eletricos", [])
-    for carregador in carregadores_brutos:
-        demasiado_perto = False
-        lon_novo, lat_novo = carregador["longitude"], carregador["latitude"]
-        
-        for bomba in plotar_bombas:
-            dist = calcular_distancia(lat_novo, lon_novo, bomba["latitude"], bomba["longitude"])
-            if dist < DISTANCIA_MINIMA_METROS:
-                demasiado_perto = True
-                break
-        
-        if not demasiado_perto:
-            plotar_carregadores.append(carregador)
-    
-    print(f"  - Prioridade 2 (Carregadores): {len(plotar_carregadores)} pontos aceites (de {len(carregadores_brutos)}).")
-
-    pontos_prioritarios = plotar_bombas + plotar_carregadores
-    ids_de_recolha_aceites = set()
-
-    for ponto_novo in pontos_recolha_brutos:
-        demasiado_perto = False
-        
-        if ponto_novo["id_no"] in ids_de_recolha_aceites:
-            continue
-        
-        lon_novo, lat_novo = ponto_novo["longitude"], ponto_novo["latitude"]
-
-        for poi in pontos_prioritarios:
-            dist = calcular_distancia(lat_novo, lon_novo, poi["latitude"], poi["longitude"])
-            if dist < DISTANCIA_MINIMA_METROS:
-                demasiado_perto = True
-                break
-        
-        if demasiado_perto:
-            continue
-
-        for ponto_aceite in plotar_recolha:
-            dist = calcular_distancia(lat_novo, lon_novo, ponto_aceite["latitude"], ponto_aceite["longitude"])
-            if dist < DISTANCIA_MINIMA_METROS:
-                demasiado_perto = True
-                break
-
-        if not demasiado_perto:
-            plotar_recolha.append(ponto_novo)
-            ids_de_recolha_aceites.add(ponto_novo["id_no"])
-
-    print(f"  - Prioridade 3 (Recolha): {len(plotar_recolha)} pontos aceites (de {len(pontos_recolha_brutos)}).")
-
+    # --- GERAR VISUALIZAÇÃO ---
     print("A gerar visualização...")
     fig, ax = plt.subplots(figsize=(15, 15))
     
