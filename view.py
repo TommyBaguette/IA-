@@ -30,6 +30,20 @@ def mostrar_aviso(aviso):
 def mostrar_sucesso(sucesso):
     print(f"\n- SUCESSO: {sucesso}")
 
+def mostrar_estado_frota(tick, frota_taxis):
+    """Imprime o estado da frota e a missão de abastecimento a cada passo."""
+    print(f"\n--- TICK {tick} ---")
+    for t in frota_taxis:
+        km_restantes = t.autonomia_atual / 1000.0
+        
+        status_missao = ""
+        if t.estado == "a_abastecer":
+            status_missao = "-> DESTINO: ABASTECIMENTO!"
+        elif t.estado == "sem_energia":
+            status_missao = "!!! PARADO: SEM ENERGIA !!!"
+
+        print(f"Taxi {t.id} [{t.tipo_motor.upper()}]: {km_restantes:.2f} km | Est: {t.estado} {status_missao}")
+
 def verificar_ficheiros_necessarios(ficheiros):
     for ficheiro, nome_amigavel, solucao in ficheiros:
         if not os.path.exists(ficheiro):

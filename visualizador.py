@@ -4,9 +4,26 @@ import osmnx as ox
 import os
 from matplotlib.patches import Patch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.legend_handler import HandlerBase
 
 fig, ax = None, None
 taxi_image = None
+
+class HandlerImage(HandlerBase):
+    def __init__(self, img_data, zoom=1):
+        self.image_data = img_data
+        self.zoom = zoom
+        super().__init__()
+
+    def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
+        oi = OffsetImage(self.image_data, zoom=self.zoom)
+        ab = AnnotationBbox(oi, (width / 2., height / 2.),
+                            xycoords="data",
+                            frameon=False,
+                            pad=0,
+                            annotation_clip=False)
+        ab.set_transform(trans)
+        return [ab]
 
 def preparar_janela():
     global fig, ax, taxi_image
@@ -35,6 +52,7 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
                   bgcolor='#F8F9FA', show=False, close=False)
     
     legend_elements = []
+    handler_map = {}
 
     if plotar_bombas:
         lons = [p["longitude"] for p in plotar_bombas]
@@ -69,50 +87,62 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
     ax.set_axis_off()
     
     if taxi_image is not None:
-        legend_elements.append(Patch(facecolor='yellow', edgecolor='black', label='Táxis'))
+        taxi_legend_artist = OffsetImage(taxi_image, zoom=1)
+        legend_elements.append(taxi_legend_artist)
+        handler_map[OffsetImage] = HandlerImage(taxi_image, zoom=0.5)
     else:
-        legend_elements.append(plt.Line2D([0], [0], marker='s', color='w', 
-                                          markerfacecolor='yellow', markeredgecolor='black',
-                                          markersize=10, label='Táxis'))
+        legend_elements.append(Patch(facecolor='yellow', edgecolor='black', label='Táxis'))
         
-    ax.legend(handles=legend_elements, loc='lower left', fontsize=12, framealpha=0.9)
+    ax.legend(handles=legend_elements, 
+              handler_map=handler_map,
+              loc='lower left', 
+              fontsize=12, 
+              framealpha=0.9,
+              handletextpad=0.7)
 
-
-def desenhar_frame_animado(ax, G, frota_taxis, artist_anterior):
-    
+def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
+    """
+    Desenha os elementos móveis (táxis) e o dashboard de estado.
+    """
     if not plt.fignum_exists(fig.number):
-        return None, False 
+        return [], False 
 
-    if artist_anterior:
-        if isinstance(artist_anterior, list):
-            for ab in artist_anterior:
-                ab.remove()
-        else:
-            artist_anterior.remove()
+    if artists_anteriores:
+        for artist in artists_anteriores:
+            artist.remove()
 
-    novo_artist = None
+    novas_figuras = [] # Denominação da biblioteca
+
     if frota_taxis:
+
         try:
             if taxi_image is not None:
-                new_artists_list = []
                 for t in frota_taxis:
-                    x = G.nodes[t.posicao_atual]['x']
-                    y = G.nodes[t.posicao_atual]['y']
-                    oi = OffsetImage(taxi_image, zoom=0.075)
-                    ab = AnnotationBbox(oi, (x, y), xycoords='data', frameon=False, zorder=10)
-                    ax.add_artist(ab)
-                    new_artists_list.append(ab)
-                novo_artist = new_artists_list
-                
+
+                    if t.posicao_atual in G.nodes:
+                        x = G.nodes[t.posicao_atual]['x']
+                        y = G.nodes[t.posicao_atual]['y']
+                        oi = OffsetImage(taxi_image, zoom=0.08) # Zoom ajustado
+                        ab = AnnotationBbox(oi, (x, y), xycoords='data', frameon=False, zorder=10)
+                        ax.add_artist(ab)
+                        novas_figuras.append(ab)
             else:
-                taxis_lons = [G.nodes[t.posicao_atual]['x'] for t in frota_taxis]
-                taxis_lats = [G.nodes[t.posicao_atual]['y'] for t in frota_taxis]
-                novo_artist = ax.scatter(taxis_lons, taxis_lats, c='yellow', s=120, 
-                                         marker='s', edgecolors='black', linewidth=1, 
-                                         zorder=10)
-        except KeyError:
-            pass
+
+                lons, lats = [], []
+                for t in frota_taxis:
+                    if t.posicao_atual in G.nodes:
+                        lons.append(G.nodes[t.posicao_atual]['x'])
+                        lats.append(G.nodes[t.posicao_atual]['y'])
+                
+                scatter = ax.scatter(lons, lats, c='yellow', s=120, 
+                                     marker='s', edgecolors='black', linewidth=1, zorder=10)
+                novas_figuras.append(scatter)
+
+            
+
+        except Exception as e:
+            print(f"Erro no desenho: {e}")
     
-    plt.pause(0.5) 
+    plt.pause(0.1) 
     
-    return novo_artist, True
+    return novas_figuras, True

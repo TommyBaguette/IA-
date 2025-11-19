@@ -30,40 +30,40 @@ class Controlador:
             elif escolha == '5':
                 self.acao_sair()
             else:
-                self.view_consola.mostrar_erro("Escolha inválida")
+                self.view_consola.mostrar_erro("Escolha invalida")
             
             if self.a_correr:
                 self.view_consola.pedir_para_continuar()
 
     def acao_criar_mapa_base(self):
-        self.view_consola.mostrar_mensagem("A criar mapa base... (pode demorar)")
+        self.view_consola.mostrar_mensagem("A criar mapa base...")
         self.gestor_mapa.criar_mapa_base()
         self.view_consola.mostrar_sucesso("Mapa base criado.")
 
     def acao_criar_zonas_recolha(self):
-        self.view_consola.mostrar_mensagem("A criar zonas de recolha... (pode demorar)")
+        self.view_consola.mostrar_mensagem("A criar zonas de recolha...")
         if not self.view_consola.verificar_ficheiros_necessarios([
-            ("matosinhos_5km.graphml", "Grafo de estradas", "opção 1")
+            ("matosinhos_5km.graphml", "Grafo de estradas", "opcao 1")
         ]):
             return
 
         if self.gestor_mapa.criar_zonas_recolha():
             self.view_consola.mostrar_sucesso("Zonas de recolha criadas.")
         else:
-            self.view_consola.mostrar_erro("Não foi possível criar zonas de recolha.")
+            self.view_consola.mostrar_erro("Nao foi possivel criar zonas de recolha.")
 
     def acao_visualizar_mapa_estatico(self):
-        self.view_consola.mostrar_mensagem("A carregar visualização completa...")
+        self.view_consola.mostrar_mensagem("A carregar visualizacao completa...")
         self.gestor_mapa.visualizar_mapa_com_pois()
 
-    def acao_simulacao_animada(self, passos_simulacao=100):
-        self.view_consola.mostrar_mensagem("A preparar simulação animada...")
+    def acao_simulacao_animada(self, passos_simulacao=1000):
+        self.view_consola.mostrar_mensagem("A preparar simulacao animada...")
 
         if not self.view_consola.verificar_ficheiros_necessarios([
-            ("matosinhos_5km.graphml", "Grafo de estradas", "opção 1"),
-            ("pontos_interesse_matoshinhos.json", "POIs da Frota", "opção 1"),
-            ("zonas_recolha_matosinhos.json", "Zonas de Recolha", "opção 2"),
-            ("frota.json", "Configuração da Frota", "criar o ficheiro")
+            ("matosinhos_5km.graphml", "Grafo de estradas", "opcao 1"),
+            ("pontos_interesse_matoshinhos.json", "POIs da Frota", "opcao 1"),
+            ("zonas_recolha_matosinhos.json", "Zonas de Recolha", "opcao 2"),
+            ("frota.json", "Configuracao da Frota", "criar o ficheiro")
         ]):
             return
             
@@ -73,50 +73,52 @@ class Controlador:
             with open("zonas_recolha_matosinhos.json", "r", encoding="utf-8") as f:
                 zonas_recolha = json.load(f)
         except Exception as e:
-            self.view_consola.mostrar_erro(f"Não foi possível ler as zonas de recolha: {e}")
+            self.view_consola.mostrar_erro(f"Nao foi possivel ler as zonas de recolha: {e}")
             return
         
         plotar_bombas, plotar_carregadores, plotar_recolha = self.gestor_mapa.filtrar_pontos_com_hierarquia(
             pois_frota, zonas_recolha, 250
         )
 
-        sim = self.motor_simulacao(G)
+        sim = self.motor_simulacao(G, pois_frota)
         
         zonas_filtradas_dict = {"recolha": plotar_recolha}
         sucesso, mensagem_erro = sim.criar_frota(zonas_filtradas_dict, "frota.json")
         if not sucesso:
-            self.view_consola.mostrar_erro(f"Não foi possível criar a frota: {mensagem_erro}")
+            self.view_consola.mostrar_erro(f"Nao foi possivel criar a frota: {mensagem_erro}")
             return
 
         fig, ax = self.view_grafica.preparar_janela()
-        self.view_consola.mostrar_mensagem("A iniciar simulação... (Fecha a janela do mapa para parar)")
+        self.view_consola.mostrar_mensagem("A iniciar simulacao...")
 
         self.view_grafica.desenhar_fundo_mapa(ax, G, 
                                               plotar_bombas, 
                                               plotar_carregadores, 
                                               plotar_recolha)
         
-        artist_frame_anterior = None
+        artists_frame_anterior = []
 
-        for _ in range(passos_simulacao):
+        for i in range(passos_simulacao):
             sim.executar_passo()
             
-            artist_frame_anterior, continuar = self.view_grafica.desenhar_frame_animado(
+            self.view_consola.mostrar_estado_frota(i + 1, sim.frota_taxis)
+            
+            artists_frame_anterior, continuar = self.view_grafica.desenhar_frame_animado(
                 ax=ax,
                 G=G,
                 frota_taxis=sim.frota_taxis,
-                artist_anterior=artist_frame_anterior
+                artists_anteriores=artists_frame_anterior
             )
             
             if not continuar:
-                self.view_consola.mostrar_mensagem("Janela fechada. Simulação terminada.")
+                self.view_consola.mostrar_mensagem("Janela fechada. Simulacao terminada.")
                 break
         
         self.view_grafica.fechar_janela()
-        self.view_consola.mostrar_sucesso("Simulação animada terminada.")
+        self.view_consola.mostrar_sucesso("Simulacao animada terminada.")
 
     def acao_sair(self):
-        self.view_consola.mostrar_mensagem("Até logo!")
+        self.view_consola.mostrar_mensagem("Ate logo!")
         self.a_correr = False
 
 if __name__ == "__main__":
