@@ -24,7 +24,7 @@ class Taxi:
         self.id = id
         self.posicao_atual = no_inicial
         
-        self.historico_movimento = []
+        self.historico_movimento = [] #utilizado para debug
         
         self.objetivo_atual = None 
         self.rota_atual = []       
@@ -32,27 +32,33 @@ class Taxi:
         self.autonomia_maxima = autonomia_max * 1000
         self.autonomia_atual = self.autonomia_maxima
         self.custo_total = 0.0
+        self.emissoes_CO2 = 0.0
         self.estado = "livre" 
         
         self.tipo_motor = tipo_motor
         self.capacidade = capacidade
         
         if self.tipo_motor == "eletrico":
-            self.velocidade_carregamento = 50000
-            self.custo_por_km = 0.10
+            self.velocidade_carregamento = 500
+            self.custo_por_km = 0.06
+            self.emissao_por_km = 0.0
         else:
             self.velocidade_carregamento = self.autonomia_maxima
-            self.custo_por_km = 0.60
+            self.custo_por_km = 0.30
+            self.emissao_por_km = 0.11
 
     def mover_para(self, novo_no, distancia_metros):
         self.historico_movimento.append(self.posicao_atual)
-        if len(self.historico_movimento) > 10:
+        if len(self.historico_movimento) > 20:
             self.historico_movimento.pop(0)
             
         self.posicao_atual = novo_no
         self.autonomia_atual -= distancia_metros
+        
         custo_viagem = (distancia_metros / 1000.0) * self.custo_por_km
+        emissoes_viagem = (distancia_metros / 1000.0) * self.emissao_por_km
         self.custo_total += custo_viagem
+        self.emissoes_CO2 += emissoes_viagem
 
         if self.autonomia_atual <= 0:
             self.autonomia_atual = 0
@@ -77,7 +83,7 @@ class MotorSimulacao:
         self.G = G
         self.frota_taxis = []
         self.passo_atual = 0
-        self.FATOR_CONSUMO = 5.0
+        self.FATOR_CONSUMO = 1.0
         self.pois_frota = pois_frota_data
 
     def criar_frota(self, zonas_recolha, config_file="frota.json"):
@@ -101,9 +107,7 @@ class MotorSimulacao:
                 capacidade=config_taxi["capacidade"],
                 autonomia_max=config_taxi["autonomia_max"]
             )
-            
-            if i == 0:
-                novo_taxi.autonomia_atual = novo_taxi.autonomia_maxima * 0.05 
+        
 
             self.frota_taxis.append(novo_taxi)
         
@@ -183,33 +187,28 @@ class MotorSimulacao:
                 if taxi.rota_atual:
                     proximo_no = taxi.rota_atual.pop(0)
                 
-                else:
+                elif taxi.estado == "livre":
                     pos_atual = taxi.posicao_atual
-                    try:
-                        vizinhos = list(self.G.neighbors(pos_atual))
-                        
-                        # Lógica Simplificada:
-                        # 1. Tenta ir para onde não foi recentemente
-                        opcoes_validas = [v for v in vizinhos if v not in taxi.historico_movimento]
-                        
-                        if opcoes_validas:
-                            proximo_no = random.choice(opcoes_validas)
-                        elif vizinhos:
-                            # 2. Se só houver sítios repetidos, vai na mesma (melhor que teleporte)
-                            proximo_no = random.choice(vizinhos)
-                        else:
-                            # 3. Beco sem saída -> Tenta voltar para trás (Predecessors)
-                            preds = list(self.G.predecessors(pos_atual))
-                            if preds:
-                                proximo_no = random.choice(preds)
+                    
+                    if taxi.historico_movimento.count(pos_atual) >= 10:
+                        todos_nos = list(self.G.nodes)
+                        proximo_no = random.choice(todos_nos)
+                        taxi.historico_movimento = [] 
+                    else:
+                        try:
+                            vizinhos = list(self.G.neighbors(pos_atual))
+                            if not vizinhos: 
+                                vizinhos = list(self.G.predecessors(pos_atual))
+                            
+                            if vizinhos:
+                                proximo_no = random.choice(vizinhos)
                             else:
-                                # 4. Ilha isolada total -> Só aqui é que teleporta
                                 todos_nos = list(self.G.nodes)
                                 proximo_no = random.choice(todos_nos)
                                 taxi.historico_movimento = []
 
-                    except (nx.NetworkXError, KeyError, IndexError):
-                        continue
+                        except (nx.NetworkXError, KeyError, IndexError):
+                            continue
 
                 if proximo_no:
                     distancia = 0

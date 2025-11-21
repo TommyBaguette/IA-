@@ -3,30 +3,30 @@
     "id": 1,
     "tipo_motor": "gasolina",
     "capacidade": 4,
-    "autonomia_max": 600
+    "autonomia_max": 60
   },
   {
     "id": 2,
     "tipo_motor": "eletrico",
     "capacidade": 6,
-    "autonomia_max": 350
+    "autonomia_max": 35
   },
   {
     "id": 3,
     "tipo_motor": "gasolina",
     "capacidade": 6,
-    "autonomia_max": 700
+    "autonomia_max": 70
   },
   {
     "id": 4,
     "tipo_motor": "eletrico",
     "capacidade": 4,
-    "autonomia_max": 300
+    "autonomia_max": 30
   },
   {
     "id": 5,
     "tipo_motor": "eletrico",
     "capacidade": 4,
-    "autonomia_max": 380
+    "autonomia_max": 38
   }
 ]

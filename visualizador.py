@@ -28,7 +28,9 @@ class HandlerImage(HandlerBase):
 def preparar_janela():
     global fig, ax, taxi_image
     plt.ion()
-    fig, ax = plt.subplots(figsize=(15, 15))
+    
+    fig, ax = plt.subplots(figsize=(14, 10))
+    plt.subplots_adjust(right=0.70) 
 
     image_path = os.path.join(os.path.dirname(__file__), "taxi_icon.png")
     if not os.path.exists(image_path):
@@ -93,56 +95,120 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
     else:
         legend_elements.append(Patch(facecolor='yellow', edgecolor='black', label='Táxis'))
         
+  
     ax.legend(handles=legend_elements, 
               handler_map=handler_map,
-              loc='lower left', 
-              fontsize=12, 
+              loc='lower left',       
+              bbox_to_anchor=(1.02, 0.0), 
+              fontsize=10, 
               framealpha=0.9,
               handletextpad=0.7)
 
 def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
-    """
-    Desenha os elementos móveis (táxis) e o dashboard de estado.
-    """
+
     if not plt.fignum_exists(fig.number):
+
         return [], False 
 
+
+    novos_artists = [] 
+
+
     if artists_anteriores:
+
         for artist in artists_anteriores:
+
             artist.remove()
 
-    novas_figuras = [] # Denominação da biblioteca
 
     if frota_taxis:
 
         try:
+
+            texto_estado = "ESTADO DA FROTA:\n"
+
+            texto_estado += f"{'ID':<4}  {'Auto(km)':<8}   {'Custo':<8}     {'CO2':<6}   {'Estado'}\n"
+
+            texto_estado += "-"*48 + "\n"
+
+
+            for t in frota_taxis:
+
+                km_restantes = t.autonomia_atual / 1000.0
+
+                estado_str = "Livre"
+
+                if t.estado == "a_abastecer": estado_str = "A abastecer"
+
+                elif t.estado == "sem_energia": estado_str = "MORTO"
+
+                linha = f"{t.id:<4} {km_restantes:>7.1f}   {t.custo_total:>7.2f}€   {t.emissoes_CO2:>5.0f}kg      {estado_str}\n"
+
+                texto_estado += linha
+
+            text_artist = ax.text(1.02, 0.6, texto_estado, 
+                                  transform=ax.transAxes, 
+                                  fontsize=9, 
+                                  family='monospace', 
+                                  verticalalignment='center', 
+                                  bbox=dict(boxstyle='round', facecolor='white', alpha=1.0, edgecolor='gray'))
+
+            novos_artists.append(text_artist)
+
+
+        except Exception:
+
+            pass
+
+        try:
+
             if taxi_image is not None:
+
                 for t in frota_taxis:
 
-                    if t.posicao_atual in G.nodes:
+                    if t.posicao_atual in G.nodes and t.estado != "sem_energia":
+
                         x = G.nodes[t.posicao_atual]['x']
+
                         y = G.nodes[t.posicao_atual]['y']
-                        oi = OffsetImage(taxi_image, zoom=0.08) # Zoom ajustado
+
+                        oi = OffsetImage(taxi_image, zoom=0.08)
+
                         ab = AnnotationBbox(oi, (x, y), xycoords='data', frameon=False, zorder=10)
+
                         ax.add_artist(ab)
-                        novas_figuras.append(ab)
+
+                        novos_artists.append(ab)
+
             else:
 
                 lons, lats = [], []
+
                 for t in frota_taxis:
-                    if t.posicao_atual in G.nodes:
+
+                    if t.posicao_atual in G.nodes and t.estado != "sem_energia":
+
                         lons.append(G.nodes[t.posicao_atual]['x'])
+
                         lats.append(G.nodes[t.posicao_atual]['y'])
+
                 
+
                 scatter = ax.scatter(lons, lats, c='yellow', s=120, 
+
                                      marker='s', edgecolors='black', linewidth=1, zorder=10)
-                novas_figuras.append(scatter)
 
-            
+                novos_artists.append(scatter)
 
-        except Exception as e:
-            print(f"Erro no desenho: {e}")
+
+        except Exception:
+
+            pass
+
     
-    plt.pause(0.1) 
+
+    plt.pause(0.05) 
+
     
-    return novas_figuras, True
+
+    return novos_artists, True

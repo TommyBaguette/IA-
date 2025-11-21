@@ -13,26 +13,12 @@ def criar_mapa_base():
     lat, lon = 41.1821, -8.6891
     dist = 5000
     
-    print("=== SISTEMA DE MAPAS (BASE DA FROTA) ===\n")
-    
-    print("1. A descarregar grafo de estradas...")
     G = ox.graph_from_point((lat, lon), dist=dist, network_type="drive")
-    
-    # --- CORREÇÃO: Limpar nós isolados ---
-    print("   - A limpar nós isolados (Strongly Connected Component)...")
     G = ox.utils_graph.get_largest_component(G, strongly=True)
-    # -------------------------------------
 
-    print(f"   - Grafo pronto: {len(G.nodes)} nós, {len(G.edges)} arestas")
-    
-    print("\n2. A buscar pontos de interesse da frota...")
     bombas = ox.features_from_point((lat, lon), tags={"amenity": "fuel"}, dist=dist)
     carregadores = ox.features_from_point((lat, lon), tags={"amenity": "charging_station"}, dist=dist)
     
-    print(f"   - Bombas de gasolina: {len(bombas)}")
-    print(f"   - Carregadores elétricos: {len(carregadores)}")
-    
-    print("\n3. A ligar POIs aos nós da estrada...")
     pois_data = {
         "bombas_gasolina": [],
         "carregadores_eletricos": []
@@ -70,16 +56,12 @@ def criar_mapa_base():
     with open(nome_ficheiro_pois, "w", encoding="utf-8") as f:
         json.dump(pois_data, f, ensure_ascii=False, indent=2)
     
-    print(f"   - Pontos de interesse da frota guardados em {nome_ficheiro_pois}")
     
     nome_ficheiro_grafo = "matosinhos_5km.graphml"
     ox.save_graphml(G, nome_ficheiro_grafo)
     
-    print(f"   - Grafo guardado em {nome_ficheiro_grafo}")
-    print("\n SISTEMA BASE COMPLETO!")
 
 def criar_zonas_recolha():
-    print("\n=== A CRIAR ZONAS DE RECOLHA DE CLIENTES ===")
     
     ox.settings.log_console = False
     ox.settings.use_cache = True
@@ -163,7 +145,6 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     return R * c
 
 def filtrar_pontos_com_hierarquia(pois_frota_data, zonas_data, distancia_minima):
-    print(f"A aplicar filtragem hierárquica com distância de {distancia_minima}m...")
     
     plotar_bombas = pois_frota_data.get("bombas_gasolina", [])
     plotar_carregadores = []
@@ -217,7 +198,6 @@ def visualizar_mapa_com_pois():
         with open("pontos_interesse_matoshinhos.json", "r") as f: pois_frota = json.load(f)
         with open("zonas_recolha_matosinhos.json", "r") as f: zonas = json.load(f)
     except:
-        print("Erro ao carregar ficheiros.")
         return
 
     bombas, carregadores, recolha = filtrar_pontos_com_hierarquia(pois_frota, zonas, 250)
