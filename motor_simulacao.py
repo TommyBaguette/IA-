@@ -24,7 +24,7 @@ class Taxi:
         self.id = id
         self.posicao_atual = no_inicial
         
-        self.historico_movimento = [] #utilizado para debug
+        self.historico_movimento = []
         
         self.objetivo_atual = None 
         self.rota_atual = []       
@@ -39,7 +39,7 @@ class Taxi:
         self.capacidade = capacidade
         
         if self.tipo_motor == "eletrico":
-            self.velocidade_carregamento = 500
+            self.velocidade_carregamento = 5000
             self.custo_por_km = 0.06
             self.emissao_por_km = 0.0
         else:
@@ -83,31 +83,34 @@ class MotorSimulacao:
         self.G = G
         self.frota_taxis = []
         self.passo_atual = 0
-        self.FATOR_CONSUMO = 1.0
+        self.FATOR_CONSUMO = 1
         self.pois_frota = pois_frota_data
 
-    def criar_frota(self, zonas_recolha, config_file="frota.json"):
-        lista_pontos_recolha = []
-        for categoria in zonas_recolha.values():
-            lista_pontos_recolha.extend(categoria)
-        
-        if not lista_pontos_recolha: return False, "Sem pontos de recolha."
-
-        if not os.path.exists(config_file): return False, f"Ficheiro '{config_file}' não encontrado."
+    def criar_frota(self, config_file="Data/frota.json"):
+        if not os.path.exists(config_file): 
+            if os.path.exists("frota.json"):
+                config_file = "frota.json"
+            else:
+                return False, f"Ficheiro '{config_file}' nao encontrado."
             
         with open(config_file, 'r', encoding='utf-8') as f:
             config_frota = json.load(f)
 
+        todos_nos = list(self.G.nodes)
+
         for i, config_taxi in enumerate(config_frota):
-            ponto_inicial = random.choice(lista_pontos_recolha)
+            ponto_inicial = random.choice(todos_nos)
+            
             novo_taxi = Taxi(
                 id=config_taxi["id"],
-                no_inicial=ponto_inicial["id_no"],
+                no_inicial=ponto_inicial,
                 tipo_motor=config_taxi["tipo_motor"],
                 capacidade=config_taxi["capacidade"],
                 autonomia_max=config_taxi["autonomia_max"]
             )
-        
+            
+            if i == 0:
+                novo_taxi.autonomia_atual = novo_taxi.autonomia_maxima * 0.05 
 
             self.frota_taxis.append(novo_taxi)
         
@@ -201,7 +204,9 @@ class MotorSimulacao:
                                 vizinhos = list(self.G.predecessors(pos_atual))
                             
                             if vizinhos:
-                                proximo_no = random.choice(vizinhos)
+                                opcoes = [v for v in vizinhos if v not in taxi.historico_movimento]
+                                if opcoes: proximo_no = random.choice(opcoes)
+                                else: proximo_no = random.choice(vizinhos)
                             else:
                                 todos_nos = list(self.G.nodes)
                                 proximo_no = random.choice(todos_nos)

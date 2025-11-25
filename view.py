@@ -5,18 +5,18 @@ def mostrar_menu_principal():
     print("\n=== MENU PRINCIPAL - TaxiGreen Matosinhos ===")
     print("--- Setup (Executar 1 vez) ---")
     print("1. [SETUP] Criar mapa base (Estradas + POIs da Frota)")
-    print("2. [SETUP] Criar Zonas de Recolha (Hotéis, Hospitais, etc.)")
     print("--- Operações ---")
-    print("3. [VER] Carregar e visualizar mapa estático")
-    print("4. [RUN] Iniciar simulação ANIMADA (Visual)")
-    print("5. Sair")
+    print("2. [VER] Carregar e visualizar mapa estático")
+    print("3. [RUN] Iniciar simulação ANIMADA (Visual)")
+    print("4. Sair")
 
-def obter_escolha(num_opcoes=5):
+def obter_escolha(num_opcoes=4):
     return input(f"\nEscolha (1-{num_opcoes}): ").strip()
 
+
 def pedir_para_continuar():
-    print("\n(A voltar ao menu em 2 segundos...)")
-    time.sleep(2) 
+    print("\n(A voltar ao menu em 1 segundos...)")
+    time.sleep(1) 
 
 def mostrar_mensagem(mensagem):
     print(mensagem)
