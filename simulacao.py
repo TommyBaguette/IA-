@@ -51,23 +51,24 @@ class Controlador:
             ("frota.json", "Configuracao da Frota", "criar o ficheiro")
         ]):
             return
-            
+
+        algoritmo_escolhido = self.view_consola.pedir_algoritmo()
+
         G, pois_frota = self.gestor_mapa.carregar_dados()
         
-
         plotar_bombas, plotar_carregadores, _ = self.gestor_mapa.filtrar_pontos_com_hierarquia(
             pois_frota, 250
         )
 
-        sim = self.motor_simulacao(G, pois_frota)
+        sim = self.motor_simulacao(G, pois_frota, algoritmo=algoritmo_escolhido)
         
-        sucesso, mensagem_erro = sim.criar_frota(config_file="frota.json") 
+        sucesso, mensagem_erro = sim.criar_frota(config_file="frota.json")
         if not sucesso:
             self.view_consola.mostrar_erro(f"Nao foi possivel criar a frota: {mensagem_erro}")
             return
 
         fig, ax = self.view_grafica.preparar_janela()
-        self.view_consola.mostrar_mensagem("A iniciar simulacao...")
+        self.view_consola.mostrar_mensagem(f"A iniciar simulacao com {algoritmo_escolhido.upper()}...")
 
         self.view_grafica.desenhar_fundo_mapa(ax, G, 
                                               plotar_bombas, 
@@ -76,6 +77,7 @@ class Controlador:
         
         artists_frame_anterior = []
 
+    
         for i in range(passos_simulacao):
             sim.executar_passo()
             
@@ -85,6 +87,7 @@ class Controlador:
                 ax=ax,
                 G=G,
                 frota_taxis=sim.frota_taxis,
+                pedidos_pendentes=sim.pedidos_pendentes, 
                 artists_anteriores=artists_frame_anterior
             )
             

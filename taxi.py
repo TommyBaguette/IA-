@@ -3,7 +3,6 @@ class Taxi:
         self.id = id
         self.posicao_atual = no_inicial
         
-        # Memória de movimento - ajuda no debug
         self.historico_movimento = []
         
         self.objetivo_atual = None 
@@ -14,13 +13,15 @@ class Taxi:
         self.autonomia_atual = self.autonomia_maxima
         self.custo_total = 0.0
         self.emissoes_CO2 = 0.0
+        self.viagens_feitas = 0
+        self.ticks_a_carregar = 0
         self.estado = "livre" 
         
         self.tipo_motor = tipo_motor
         self.capacidade = capacidade
         
         if self.tipo_motor == "eletrico":
-            self.velocidade_carregamento = 5000
+            self.velocidade_carregamento = 10
             self.custo_por_km = 0.06
             self.emissao_por_km = 0.0
         else:

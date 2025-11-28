@@ -77,6 +77,14 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
                                           markerfacecolor='green', markersize=10, 
                                           label=f'Carregadores ({len(lons)})'))
     
+    if plotar_recolha:
+        lons = [p["longitude"] for p in plotar_recolha]
+        lats = [p["latitude"]for p in plotar_recolha]
+        ax.scatter(lons, lats, c='black', s=100, marker='o', edgecolors='white', linewidth=1, zorder=3)
+        legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
+                                          markerfacecolor='black', markeredgecolor='white',
+                                          markersize=10, label=f'Pontos de Recolha ({len(lons)})'))
+    
     ax.set_axis_off()
     
     if taxi_image is not None:
@@ -94,7 +102,7 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
               framealpha=0.9,
               handletextpad=0.7)
 
-def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
+def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anteriores):
     if not plt.fignum_exists(fig.number):
         return [], False 
 
@@ -103,8 +111,35 @@ def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
     if artists_anteriores:
         for artist in artists_anteriores:
             artist.remove()
+    
+    if pedidos_pendentes:
+        try:
+            lons_cli = [p.origem_coords[1] for p in pedidos_pendentes]
+            lats_cli = [p.origem_coords[0] for p in pedidos_pendentes]
+            
+            scatter_cli = ax.scatter(lons_cli, lats_cli, 
+                                     c='cyan', s=150, marker='P', 
+                                     edgecolors='black', linewidth=1, zorder=8)
+            novos_artists.append(scatter_cli)
+        except: pass
 
     if frota_taxis:
+        
+        try:
+            destinos_lons = []
+            destinos_lats = []
+            for t in frota_taxis:
+                if t.estado == "ocupado" and t.objetivo_atual is not None:
+                    if t.objetivo_atual in G.nodes:
+                        destinos_lons.append(G.nodes[t.objetivo_atual]['x'])
+                        destinos_lats.append(G.nodes[t.objetivo_atual]['y'])
+            
+            if destinos_lons:
+                scatter_dest = ax.scatter(destinos_lons, destinos_lats,
+                                          c='orange', s=150, marker='X', # Marca com X
+                                          edgecolors='black', linewidth=1, zorder=9)
+                novos_artists.append(scatter_dest)
+        except: pass
         try:
             texto_estado = "ESTADO DA FROTA:\n"
             texto_estado += f"{'ID':<4} {'Auto(km)':<8}    {'Custo':<8}     {'CO2':<6}   {'Estado'}\n"
@@ -133,6 +168,7 @@ def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
             pass
 
         try:
+        
             if taxi_image is not None:
                 for t in frota_taxis:
                     if t.posicao_atual in G.nodes and t.estado != "sem_energia":
@@ -156,6 +192,6 @@ def desenhar_frame_animado(ax, G, frota_taxis, artists_anteriores):
         except Exception:
             pass
     
-    plt.pause(0.01) 
+    plt.pause(0.05) 
     
     return novos_artists, True

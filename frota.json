@@ -22,11 +22,5 @@
     "tipo_motor": "eletrico",
     "capacidade": 4,
     "autonomia_max": 30
-  },
-  {
-    "id": 5,
-    "tipo_motor": "eletrico",
-    "capacidade": 4,
-    "autonomia_max": 38
   }
 ]

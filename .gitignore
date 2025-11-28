@@ -13,3 +13,6 @@ __pycache__/
 # Ficheiros de IDE/SO
 .vscode/
 .DS_Store
+
+# Ficheiros de benchmarking
+*.csv
