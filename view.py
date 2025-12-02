@@ -71,7 +71,6 @@ def mostrar_tabela_benchmark(resultados):
     print("-" * 105)
     
     for r in resultados:
-        # Nota: r['Pedidos/Km'] agora substitui o r['Mortos']
         print(f"{r['Algoritmo']:<12} | {r['Tempo (s)']:<10} | {r['Viagens']:<8} | "
               f"{r['KMs Totais']:<12} | {r['Custo (€)']:<10} | {r['Pedidos/Km']:<10} | {r['Eficiência (€/V)']:<10}")
     print("="*105)

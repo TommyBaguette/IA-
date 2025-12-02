@@ -16,23 +16,19 @@ class GestorAlocacao:
 
             candidatos = []
             
-            # Estimativa para o destino
             dist_viagem_estimada = ut.heuristica(self.G, pedido.origem, pedido.destino)
 
             for taxi in frota_taxis:
                 if taxi.estado == "livre":
-                    # Regra de Segurança da Bateria
                     margem_reserva_taxi = taxi.autonomia_maxima * 0.25
                     if taxi.autonomia_atual < margem_reserva_taxi:
                         continue 
 
-                    # Heurística até ao cliente
                     dist_h = ut.heuristica(self.G, taxi.posicao_atual, pedido.origem)
                     candidatos.append((dist_h, taxi))
 
             if not candidatos: continue
 
-            # Escolher TOP 3
             candidatos.sort(key=lambda x: x[0])
             top_candidatos = candidatos[:3] 
 

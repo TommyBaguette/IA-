@@ -1,6 +1,5 @@
 import sys
 import view as vc
-# Importar os teus "sub-programas"
 import simulacao
 import benchmark
 import taxicompare

@@ -54,7 +54,6 @@ class MotorSimulacao:
                 return caminho, distancia
                 
         except Exception as e:
-            # print(f"Erro pathfinding: {e}") # Debug se precisares
             return None, float('inf')
             
         return None, float('inf')
