@@ -7,6 +7,8 @@ import algoritmos as pf
 from taxi import Taxi
 from pedido import Pedido
 import utils as ut
+from alocacao import GestorAlocacao
+import variaveis as var
 
 
 class MotorSimulacao:
@@ -14,12 +16,13 @@ class MotorSimulacao:
         self.G = G
         self.frota_taxis = []
         self.passo_atual = 0
-        self.FATOR_CONSUMO = 1.0
+        self.FATOR_CONSUMO = var.FATOR_CONSUMO
         self.pois_frota = pois_frota_data
         self.pedidos_pendentes = []
         self.pedidos_completados = 0
         self.todos_nos = list(self.G.nodes)
         self.algoritmo_escolha = algoritmo  
+        self.alocador = GestorAlocacao(self.G, self.FATOR_CONSUMO)
 
     def criar_frota(self, config_file="frota.json"):
         if not os.path.exists(config_file): 
@@ -43,31 +46,15 @@ class MotorSimulacao:
         return True, ""
 
     def encontrar_caminho(self, origem, destino):
-        caminho = None
-        distancia = float('inf')
-
         try:
-            if self.algoritmo_escolha == "dfs":
-                caminho = pf.procura_DFS(self.G, origem, destino)
-            elif self.algoritmo_escolha == "bfs":
-                caminho = pf.procura_BFS(self.G, origem, destino)
-            elif self.algoritmo_escolha == "astar":
-                caminho = pf.procura_AStar(self.G, origem, destino)
-            elif self.algoritmo_escolha == "greedy":
-                caminho = pf.procura_Greedy(self.G, origem, destino)
-            else:
-                
-                caminho = nx.dijkstra_path(self.G, origem, destino, weight='length')
+            caminho = pf.calcular_rota(self.algoritmo_escolha, self.G, origem, destino)
             
             if caminho:
-                
-                if self.algoritmo_escolha == "dijkstra":
-                    distancia = nx.path_weight(self.G, caminho, weight='length')
-                else:
-                    distancia = pf.calcular_custo_caminho(self.G, caminho)
+                distancia = pf.calcular_custo_caminho(self.G, caminho)
                 return caminho, distancia
                 
-        except Exception:
+        except Exception as e:
+            # print(f"Erro pathfinding: {e}") # Debug se precisares
             return None, float('inf')
             
         return None, float('inf')
@@ -94,7 +81,7 @@ class MotorSimulacao:
         return melhor_no, melhor_distancia
 
     def gerar_novos_pedidos(self):
-        if random.random() < 0.35: 
+        if random.random() < var.PROB_GERAR_PEDIDO: 
             origem = random.choice(self.todos_nos)
             destino = random.choice(self.todos_nos)
             origem_coords = (self.G.nodes[origem]['y'], self.G.nodes[origem]['x'])
@@ -108,70 +95,15 @@ class MotorSimulacao:
             self.pedidos_pendentes.append(novo_pedido)
 
     def alocar_pedidos(self):
-
-        for pedido in self.pedidos_pendentes:
-            if pedido.estado != "pendente": continue
-
-            candidatos = []
-            dist_viagem_estimada = ut.heuristica(self.G, pedido.origem, pedido.destino)
-
-            for taxi in self.frota_taxis:
-                if taxi.estado == "livre":
-        
-                    margem_reserva_taxi = taxi.autonomia_maxima * 0.25
-                    if taxi.autonomia_atual < margem_reserva_taxi:
-                        continue 
-
-                    dist_h = ut.heuristica(self.G, taxi.posicao_atual, pedido.origem)
-                    candidatos.append((dist_h, taxi))
-
-            if not candidatos: continue
-
-            candidatos.sort(key=lambda x: x[0])
-            top_candidatos = candidatos[:3] 
-
-            melhor_taxi = None
-            menor_custo_real = float('inf')
-
-            for dist_h, taxi in top_candidatos:
-                
-                try:
-                    dist_real_ate_pedido = nx.shortest_path_length(
-                        self.G, taxi.posicao_atual, pedido.origem, weight='length'
-                    )
-                except nx.NetworkXNoPath:
-                    continue
-                
-                custo_viagem_estimado = (dist_viagem_estimada * self.FATOR_CONSUMO) * 1.3
-                custo_buscar = dist_real_ate_pedido * self.FATOR_CONSUMO
-                custo_total = custo_buscar + custo_viagem_estimado
-                
-                margem = taxi.autonomia_maxima * 0.25
-
-                if dist_real_ate_pedido < menor_custo_real and taxi.autonomia_atual > (custo_total + margem):
-                    menor_custo_real = dist_real_ate_pedido
-                    melhor_taxi = taxi
             
-            if melhor_taxi:
-        
-                caminho, _ = self.encontrar_caminho(melhor_taxi.posicao_atual, pedido.origem)
-                if caminho:
-                    if len(caminho) > 0 and caminho[0] == melhor_taxi.posicao_atual:
-                        caminho.pop(0)
-                        
-                    melhor_taxi.estado = "a_recolher"
-                    melhor_taxi.rota_atual = caminho
-                    melhor_taxi.objetivo_atual = pedido.origem
-                    melhor_taxi.destino_passageiro = pedido.destino
-                    melhor_taxi.pedido_atual = pedido 
-                    pedido.estado = "atribuido"
+            self.alocador.processar_alocacao(self.frota_taxis, self.pedidos_pendentes, self)
 
     def verificar_e_atribuir_abastecimento(self):
         for taxi in self.frota_taxis:
             if taxi.estado != 'livre' or taxi.autonomia_atual <= 0:
                 continue
 
-            threshold = taxi.autonomia_maxima * 0.25 
+            threshold = taxi.autonomia_maxima * var.MARGEM_SEGURANCA
             if taxi.autonomia_atual <= threshold:
                 destino_abastecimento, dist_metros = self.encontrar_poi_mais_proximo(taxi)
                 if destino_abastecimento is None: continue

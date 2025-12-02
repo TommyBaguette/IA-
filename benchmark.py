@@ -3,11 +3,24 @@ import random
 import csv
 import gestor_mapa as gm
 import motor_simulacao as ms
-import view as vc  # Importar a View
+import view as vc 
+import variaveis as var
 
 # --- CONFIGURAÇÕES ---
-PASSOS_SIMULACAO = 500
-SEED_FIXA = 42
+PASSOS_SIMULACAO = var.PASSOS_SIMULACAO
+SEED_FIXA = var.SEED_PADRAO
+ALGORITMOS_A_TESTAR = ["dijkstra", "astar", "greedy", "bfs", "dfs"]
+
+import time
+import random
+import csv
+import gestor_mapa as gm
+import motor_simulacao as ms
+import view as vc 
+import variaveis as var
+
+PASSOS_SIMULACAO = var.PASSOS_SIMULACAO
+SEED_FIXA = var.SEED_PADRAO
 ALGORITMOS_A_TESTAR = ["dijkstra", "astar", "greedy", "bfs", "dfs"]
 
 def correr_benchmark():
@@ -34,21 +47,30 @@ def correr_benchmark():
         for _ in range(PASSOS_SIMULACAO):
             sim.executar_passo()
         tempo_execucao = time.time() - start_time
+        total_custo = 0.0
+        total_km = 0.0
         
-        total_custo = sum(t.custo_total for t in sim.frota_taxis)
-        taxis_mortos = sum(1 for t in sim.frota_taxis if t.estado == "sem_energia")
-        viagens = sim.pedidos_completados
-        eficiencia = round(total_custo / viagens, 2) if viagens > 0 else 0.0
+        for t in sim.frota_taxis:
+            total_custo += t.custo_total
+            if t.custo_por_km > 0:
+                total_km += (t.custo_total / t.custo_por_km)
 
-        vc.mostrar_progresso_benchmark(alg, tempo_execucao, viagens, total_custo)
+        viagens = sim.pedidos_completados
+        
+        pedidos_por_km = (viagens / total_km) if total_km > 0 else 0.0
+        
+        eficiencia_custo = round(total_custo / viagens, 2) if viagens > 0 else 0.0
+
+        vc.mostrar_progresso_benchmark(alg, tempo_execucao, viagens, total_km)
 
         dados = {
             "Algoritmo": alg.upper(),
             "Tempo (s)": round(tempo_execucao, 4),
             "Viagens": viagens,
+            "KMs Totais": round(total_km, 1),
             "Custo (€)": round(total_custo, 2),
-            "Mortos": taxis_mortos,
-            "Eficiência (€/V)": eficiencia
+            "Pedidos/Km": round(pedidos_por_km, 4),
+            "Eficiência (€/V)": eficiencia_custo
         }
         resultados.append(dados)
 

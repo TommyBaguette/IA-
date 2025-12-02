@@ -1,3 +1,5 @@
+import variaveis as var
+
 class Taxi:
     def __init__(self, id, no_inicial, tipo_motor, capacidade, autonomia_max):
         self.id = id
@@ -11,8 +13,8 @@ class Taxi:
         
         self.autonomia_maxima = autonomia_max * 1000
         self.autonomia_atual = self.autonomia_maxima
-        self.custo_total = 0.0
-        self.emissoes_CO2 = 0.0
+        self.custo_total = 0
+        self.emissoes_CO2 = 0
         self.viagens_feitas = 0
         self.ticks_a_carregar = 0
         self.estado = "livre" 
@@ -21,13 +23,13 @@ class Taxi:
         self.capacidade = capacidade
         
         if self.tipo_motor == "eletrico":
-            self.velocidade_carregamento = 10
-            self.custo_por_km = 0.06
-            self.emissao_por_km = 0.0
+            self.velocidade_carregamento = var.VEL_CARGA_ELET
+            self.custo_por_km = var.CUSTO_ELET_KM
+            self.emissao_por_km = var.C02_EMISSAO_ELET_KM 
         else:
             self.velocidade_carregamento = self.autonomia_maxima
-            self.custo_por_km = 0.30
-            self.emissao_por_km = 0.11
+            self.custo_por_km = var.CUSTO_COMB_KM
+            self.emissao_por_km = var.C02_EMISSAO_COMB_KM
 
     def mover_para(self, novo_no, distancia_metros):
         self.historico_movimento.append(self.posicao_atual)

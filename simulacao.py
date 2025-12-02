@@ -103,5 +103,5 @@ class Controlador:
         self.a_correr = False
 
 if __name__ == "__main__":
-    controlador = Controlador()
-    controlador.run()
+    c = Controlador()
+    c.run()

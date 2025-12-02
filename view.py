@@ -1,17 +1,24 @@
+# Ficheiro: view.py
 import os
 import time 
 
 def mostrar_menu_principal():
-    print("\n=== MENU PRINCIPAL - TaxiGreen Matosinhos ===")
-    print("--- Setup (Executar 1 vez) ---")
-    print("1. [SETUP] Criar mapa base (Estradas + POIs da Frota)")
-    print("--- Operações ---")
-    print("2. Carregar e visualizar mapa estático")
-    print("3. Iniciar simulação ANIMADA (Visual)")
-    print("4. Sair")
+    print("\n" + "="*50)
+    print("      TAXI GREEN MATOSINHOS - SISTEMA CENTRAL")
+    print("="*50)
+    print("--- CONFIGURAÇÃO ---")
+    print("1. [SETUP] Criar/Resetar Mapa e Frota")
+    print("2. [VER] Visualizar Mapa Estático")
+    print("\n--- SIMULAÇÃO E ANÁLISE ---")
+    print("3. [VISUAL] Correr Simulação Animada")
+    print("4. [BENCHMARK] Comparar Algoritmos (Dijkstra vs A* vs DFS...)")
+    print("5. [ANÁLISE] Comparar Frota (Elétrico vs Combustão)")
+    print("\n--- SAIR ---")
+    print("0. Sair")
+    print("="*50)
 
-def obter_escolha(num_opcoes=4):
-    return input(f"\nEscolha (1-{num_opcoes}): ").strip()
+def obter_escolha():
+    return input("\nEscolha uma opção: ").strip()
 
 def pedir_algoritmo():
     print("\n--- ESCOLHA DE ALGORITMO DE NAVEGAÇÃO ---")
@@ -55,20 +62,23 @@ def mostrar_inicio_benchmark(passos, seed):
     print(f"Configuração: {passos} passos | Seed: {seed}")
     print("A carregar dados do mapa...")
 
-def mostrar_progresso_benchmark(alg, tempo, viagens, custo):
-    print(f"   >> {alg.upper():<10} | Tempo: {tempo:.2f}s | Viagens: {viagens} | Custo: {custo:.2f}€")
+def mostrar_progresso_benchmark(alg, tempo, viagens, kms):
+    print(f"   >> {alg.upper():<10} | Tempo: {tempo:.2f}s | Viagens: {viagens} | Distância: {kms:.1f} km")
 
 def mostrar_tabela_benchmark(resultados):
-    print("\n" + "="*85)
-    print(f"{'ALGORITMO':<12} | {'TEMPO(s)':<10} | {'VIAGENS':<8} | {'CUSTO(€)':<10} | {'MORTOS':<8} | {'€/VIAGEM':<10}")
-    print("-" * 85)
+    print("\n" + "="*105)
+    print(f"{'ALGORITMO':<12} | {'TEMPO(s)':<10} | {'VIAGENS':<8} | {'KMs TOTAIS':<12} | {'CUSTO(€)':<10} | {'PED/KM':<10} | {'€/VIAGEM':<10}")
+    print("-" * 105)
+    
     for r in resultados:
+        # Nota: r['Pedidos/Km'] agora substitui o r['Mortos']
         print(f"{r['Algoritmo']:<12} | {r['Tempo (s)']:<10} | {r['Viagens']:<8} | "
-              f"{r['Custo (€)']:<10} | {r['Mortos']:<8} | {r['Eficiência (€/V)']:<10}")
-    print("="*85)
+              f"{r['KMs Totais']:<12} | {r['Custo (€)']:<10} | {r['Pedidos/Km']:<10} | {r['Eficiência (€/V)']:<10}")
+    print("="*105)
+    
 
 def mostrar_inicio_analise(algoritmo, passos, seed, n_frota):
-    print(f"\n=== ANÁLISE JUSTA: ELÉTRICOS vs COMBUSTÃO ===")
+    print(f"\n=== ANÁLISE: ELÉTRICOS vs COMBUSTÃO ===")
     print(f"Algoritmo: {algoritmo.upper()} | Passos: {passos} | Seed: {seed}")
     print(f"Frota carregada: {n_frota} táxis.")
     print("A processar simulação... (aguarde)")

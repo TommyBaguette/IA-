@@ -3,9 +3,10 @@ import random
 import gestor_mapa as gm
 import motor_simulacao as ms
 import view as vc 
+import variaveis as var
 
-PASSOS = 1000
-SEED = 42
+PASSOS = var.PASSOS_SIMULACAO
+SEED = var.SEED_PADRAO
 ALGORITMO = "dijkstra"
 
 def analisar_frota():
@@ -36,8 +37,11 @@ def analisar_frota():
 
     for taxi in sim.frota_taxis:
         tipo = "eletrico" if taxi.tipo_motor == "eletrico" else "combustao"
-        
+
+        taxi.autonomia_maxima = taxi.autonomia_maxima / 10000.0
+        taxi.autonomia_atual = taxi.autonomia_atual / 10000.0
         km_percorridos = 0
+        
         if taxi.custo_por_km > 0:
             km_percorridos = taxi.custo_total / taxi.custo_por_km
         
