@@ -1,15 +1,14 @@
+# motor_simulacao.py
 import random
-import networkx as nx
 import json
 import os
-import math
+import networkx as nx
 import algoritmos as pf  
 from taxi import Taxi
-from pedido import Pedido
 import utils as ut
 from alocacao import GestorAlocacao
+from gerador_pedidos import GeradorPedidos
 import variaveis as var
-
 
 class MotorSimulacao:
     def __init__(self, G, pois_frota_data, algoritmo="dijkstra"):
@@ -21,8 +20,9 @@ class MotorSimulacao:
         self.pedidos_pendentes = []
         self.pedidos_completados = 0
         self.todos_nos = list(self.G.nodes)
-        self.algoritmo_escolha = algoritmo  
-        self.alocador = GestorAlocacao(self.G, self.FATOR_CONSUMO)
+        self.algoritmo_escolha = algoritmo
+        self.despachante = GestorAlocacao(self.G, self.FATOR_CONSUMO)
+        self.gerador = GeradorPedidos(self.G)
 
     def criar_frota(self, config_file="frota.json"):
         if not os.path.exists(config_file): 
@@ -41,6 +41,8 @@ class MotorSimulacao:
                 capacidade=config_taxi["capacidade"],
                 autonomia_max=config_taxi["autonomia_max"]
             )
+
+            novo_taxi.autonomia_atual = novo_taxi.autonomia_maxima 
             self.frota_taxis.append(novo_taxi)
         
         return True, ""
@@ -48,156 +50,88 @@ class MotorSimulacao:
     def encontrar_caminho(self, origem, destino):
         try:
             caminho = pf.calcular_rota(self.algoritmo_escolha, self.G, origem, destino)
-            
             if caminho:
-                distancia = pf.calcular_custo_caminho(self.G, caminho)
+                if self.algoritmo_escolha == "dijkstra":
+                    distancia = nx.path_weight(self.G, caminho, weight='length')
+                else:
+                    distancia = pf.calcular_custo_caminho(self.G, caminho)
                 return caminho, distancia
-                
-        except Exception as e:
-            return None, float('inf')
-            
+        except: return None, float('inf')
         return None, float('inf')
-
-    def encontrar_poi_mais_proximo(self, taxi):
-        if taxi.tipo_motor == 'eletrico':
-            lista_pois = self.pois_frota.get('carregadores_eletricos', [])
-        else:
-            lista_pois = self.pois_frota.get('bombas_gasolina', [])
-        
-        melhor_distancia = float('inf')
-        melhor_no = None
-
-        for poi in lista_pois:
-            no_destino = poi['id_no']
-            try:
-                dist = nx.shortest_path_length(self.G, taxi.posicao_atual, no_destino, weight='length')
-                if dist < melhor_distancia:
-                    melhor_distancia = dist
-                    melhor_no = no_destino
-            except nx.NetworkXNoPath:
-                continue
-
-        return melhor_no, melhor_distancia
-
-    def gerar_novos_pedidos(self):
-        if random.random() < var.PROB_GERAR_PEDIDO: 
-            origem = random.choice(self.todos_nos)
-            destino = random.choice(self.todos_nos)
-            origem_coords = (self.G.nodes[origem]['y'], self.G.nodes[origem]['x'])
-            
-            novo_pedido = Pedido(
-                id_pedido=f"P-{self.passo_atual}",
-                origem=origem,
-                destino=destino,
-                origem_coords=origem_coords
-            )
-            self.pedidos_pendentes.append(novo_pedido)
-
-    def alocar_pedidos(self):
-            
-            self.alocador.processar_alocacao(self.frota_taxis, self.pedidos_pendentes, self)
 
     def verificar_e_atribuir_abastecimento(self):
         for taxi in self.frota_taxis:
-            if taxi.estado != 'livre' or taxi.autonomia_atual <= 0:
-                continue
+            if taxi.estado != 'livre' or taxi.autonomia_atual <= 0: continue
 
             threshold = taxi.autonomia_maxima * var.MARGEM_SEGURANCA
             if taxi.autonomia_atual <= threshold:
-                destino_abastecimento, dist_metros = self.encontrar_poi_mais_proximo(taxi)
-                if destino_abastecimento is None: continue
+                
+                lista = self.pois_frota.get('carregadores_eletricos', []) if taxi.tipo_motor == 'eletrico' else self.pois_frota.get('bombas_gasolina', [])
+                
+                dest_id, dist_metros = ut.encontrar_poi_mais_proximo(self.G, taxi.posicao_atual, lista)
+                
+                if dest_id is None: continue
 
                 custo_real = dist_metros * self.FATOR_CONSUMO
                 if (custo_real * 1.10) < taxi.autonomia_atual:
-                    caminho, _ = self.encontrar_caminho(taxi.posicao_atual, destino_abastecimento)
+                    caminho, _ = self.encontrar_caminho(taxi.posicao_atual, dest_id)
                     if caminho:
-                        if len(caminho) > 0 and caminho[0] == taxi.posicao_atual:
-                            caminho.pop(0)
+                        if len(caminho) > 0 and caminho[0] == taxi.posicao_atual: caminho.pop(0)
                         taxi.estado = 'a_abastecer' 
-                        taxi.objetivo_atual = destino_abastecimento
+                        taxi.objetivo_atual = dest_id
                         taxi.rota_atual = caminho
 
     def executar_passo(self):
-        self.gerar_novos_pedidos()
-        self.alocar_pedidos()
+        self.gerador.tentar_gerar(self.passo_atual, self.pedidos_pendentes)
+        
+        self.despachante.processar_alocacao(self.frota_taxis, self.pedidos_pendentes, self)
+        
         self.verificar_e_atribuir_abastecimento()
 
         for taxi in self.frota_taxis:
             if taxi.estado == "sem_energia": continue
 
             if taxi.posicao_atual == taxi.objetivo_atual:
-                
                 if taxi.estado == "a_abastecer":
-                
                     taxi.ticks_a_carregar += 1 
-                    
                     if taxi.carregar():
-                        
                         taxi.estado = "livre"
                         taxi.objetivo_atual = None
-
                     continue 
-                
                 elif taxi.estado == "a_recolher":
                     if taxi.pedido_atual in self.pedidos_pendentes:
                         self.pedidos_pendentes.remove(taxi.pedido_atual)
-                    
-                    rota_destino, _ = self.encontrar_caminho(taxi.posicao_atual, taxi.destino_passageiro)
-                    if rota_destino:
-                        if len(rota_destino) > 0 and rota_destino[0] == taxi.posicao_atual:
-                            rota_destino.pop(0)
-                        
+                    rota, _ = self.encontrar_caminho(taxi.posicao_atual, taxi.destino_passageiro)
+                    if rota:
+                        if len(rota)>0 and rota[0] == taxi.posicao_atual: rota.pop(0)
                         taxi.estado = "ocupado"
-                        taxi.rota_atual = rota_destino
+                        taxi.rota_atual = rota
                         taxi.objetivo_atual = taxi.destino_passageiro
                     else:
                         taxi.estado = "livre"
                         taxi.pedido_atual = None
                     continue
-
                 elif taxi.estado == "ocupado":
                     taxi.estado = "livre"
                     taxi.objetivo_atual = None
-                    if taxi.pedido_atual:
-                         taxi.pedido_atual.estado = "concluido"
+                    if taxi.pedido_atual: taxi.pedido_atual.estado = "concluido"
                     taxi.pedido_atual = None
                     taxi.destino_passageiro = None
-                    
                     self.pedidos_completados += 1
                     taxi.viagens_feitas += 1 
                     continue
         
             if taxi.estado in ["livre", "a_abastecer", "a_recolher", "ocupado"]:
-                proximo_no = None
-                
-                if taxi.rota_atual:
-                    proximo_no = taxi.rota_atual.pop(0)
-                
+                proximo = None
+                if taxi.rota_atual: proximo = taxi.rota_atual.pop(0)
                 elif taxi.estado == "livre":
                     
-                    pos_atual = taxi.posicao_atual
-                    if len(taxi.historico_movimento) > 0 and taxi.historico_movimento.count(pos_atual) >= 10:
-                         proximo_no = random.choice(self.todos_nos)
-                         taxi.historico_movimento = []
-                    else:
-                        try:
-                            vizinhos = list(self.G.neighbors(pos_atual))
-                            if not vizinhos: vizinhos = list(self.G.predecessors(pos_atual))
-                            if vizinhos:
-                                opcoes = [v for v in vizinhos if v not in taxi.historico_movimento]
-                                proximo_no = random.choice(opcoes) if opcoes else random.choice(vizinhos)
-                            else:
-                                proximo_no = random.choice(self.todos_nos)
-                        except: continue
-
-                if proximo_no:
-                    distancia = 0
-                    try:
-                        distancia = self.G[taxi.posicao_atual][proximo_no][0]['length']
-                    except KeyError:
-                        try: distancia = self.G[proximo_no][taxi.posicao_atual][0]['length']
-                        except: distancia = 0 
-                    
-                    taxi.mover_para(proximo_no, distancia * self.FATOR_CONSUMO)
+                    vizinhos = list(self.G.neighbors(taxi.posicao_atual))
+                    if vizinhos: proximo = random.choice(vizinhos)
+                
+                if proximo:
+                    try: dist = self.G[taxi.posicao_atual][proximo][0]['length']
+                    except: dist = 0
+                    taxi.mover_para(proximo, dist * self.FATOR_CONSUMO)
         
         self.passo_atual += 1

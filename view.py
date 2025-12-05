@@ -1,4 +1,3 @@
-# Ficheiro: view.py
 import os
 import time 
 
@@ -49,13 +48,13 @@ def verificar_ficheiros_necessarios(ficheiros):
             return False
     return True
 
-def mostrar_estado_frota(tick, frota_taxis):
+'''def mostrar_estado_frota(tick, frota_taxis):
     print(f"\n--- TICK {tick} ---")
     for t in frota_taxis:
         km = t.autonomia_atual / 1000.0
         missao = "-> A CARREGAR" if t.estado == "a_abastecer" else ""
         if t.estado == "sem_energia": missao = "!!! MORT !!!"
-        print(f"Taxi {t.id} [{t.tipo_motor[0].upper()}]: {km:.2f} km | {t.estado} {missao}")
+        print(f"Taxi {t.id} [{t.tipo_motor[0].upper()}]: {km:.2f} km | {t.estado} {missao}") '''
 
 def mostrar_inicio_benchmark(passos, seed):
     print(f"\n=== INICIANDO BENCHMARK DE PERFORMANCE ===")

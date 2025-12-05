@@ -81,7 +81,7 @@ class Controlador:
         for i in range(passos_simulacao):
             sim.executar_passo()
             
-            self.view_consola.mostrar_estado_frota(i + 1, sim.frota_taxis)
+            #self.view_consola.mostrar_estado_frota(i + 1, sim.frota_taxis)
             
             artists_frame_anterior, continuar = self.view_grafica.desenhar_frame_animado(
                 ax=ax,

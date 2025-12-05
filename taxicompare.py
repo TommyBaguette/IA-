@@ -5,7 +5,7 @@ import motor_simulacao as ms
 import view as vc 
 import variaveis as var
 
-PASSOS = var.PASSOS_SIMULACAO
+PASSOS = var.PASSOS_SIMULACAO 
 SEED = var.SEED_PADRAO
 ALGORITMO = "dijkstra"
 
@@ -40,6 +40,7 @@ def analisar_frota():
 
         taxi.autonomia_maxima = taxi.autonomia_maxima / 10000.0
         taxi.autonomia_atual = taxi.autonomia_atual / 10000.0
+        print(f"Taxi ID {taxi.id}: Autonomia {taxi.autonomia_atual:.2f} km / {taxi.autonomia_maxima:.2f} km")
         km_percorridos = 0
         
         if taxi.custo_por_km > 0:
