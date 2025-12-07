@@ -10,6 +10,7 @@ fig, ax = None, None
 taxi_image = None
 
 class HandlerImage(HandlerBase):
+    """Classe auxiliar para colocar imagens na legenda (ícone do táxi)."""
     def __init__(self, img_data, zoom=1):
         self.image_data = img_data
         self.zoom = zoom
@@ -27,7 +28,7 @@ class HandlerImage(HandlerBase):
 
 def preparar_janela():
     global fig, ax, taxi_image
-    plt.ion()
+    plt.ion()  
     
     fig, ax = plt.subplots(figsize=(14, 10))
     plt.subplots_adjust(right=0.70) 
@@ -49,6 +50,7 @@ def fechar_janela():
         plt.close(fig)
 
 def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolha):
+    """Desenha a base estática (estradas e POIs) apenas uma vez."""
     ox.plot_graph(G, ax=ax, 
                   node_size=0, 
                   edge_color='#2E86AB', 
@@ -77,14 +79,6 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
                                           markerfacecolor='green', markersize=10, 
                                           label=f'Carregadores ({len(lons)})'))
     
-    if plotar_recolha:
-        lons = [p["longitude"] for p in plotar_recolha]
-        lats = [p["latitude"]for p in plotar_recolha]
-        ax.scatter(lons, lats, c='black', s=100, marker='o', edgecolors='white', linewidth=1, zorder=3)
-        legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
-                                          markerfacecolor='black', markeredgecolor='white',
-                                          markersize=10, label=f'Pontos de Recolha ({len(lons)})'))
-    
     ax.set_axis_off()
     
     if taxi_image is not None:
@@ -93,7 +87,11 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
         handler_map[OffsetImage] = HandlerImage(taxi_image, zoom=0.5)
     else:
         legend_elements.append(Patch(facecolor='yellow', edgecolor='black', label='Táxis'))
-        
+    
+    legend_elements.append(plt.Line2D([0], [0], marker='x', color='w', 
+                                      markeredgecolor='red', markersize=10, 
+                                      label='Trânsito (Congestionado)'))
+
     ax.legend(handles=legend_elements, 
               handler_map=handler_map,
               loc='lower left', 
@@ -102,7 +100,11 @@ def desenhar_fundo_mapa(ax, G, plotar_bombas, plotar_carregadores, plotar_recolh
               framealpha=0.9,
               handletextpad=0.7)
 
-def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anteriores):
+def desenhar_frame_animado(ax, G, frota_taxis, pedidos_pendentes, artists_anteriores):
+    """
+    Desenha os elementos dinâmicos: Trânsito, Táxis, Clientes e Texto.
+    Chamado a cada tick da simulação.
+    """
     if not plt.fignum_exists(fig.number):
         return [], False 
 
@@ -110,21 +112,41 @@ def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anterio
 
     if artists_anteriores:
         for artist in artists_anteriores:
-            artist.remove()
+            try: artist.remove()
+            except: pass
     
+    try:
+        lons_transito = []
+        lats_transito = []
+        
+        for u, v, k, data in G.edges(keys=True, data=True):
+            if data.get('congestionamento', 1.0) > 1.0:
+
+                x1, y1 = G.nodes[u]['x'], G.nodes[u]['y']
+                x2, y2 = G.nodes[v]['x'], G.nodes[v]['y']
+                lons_transito.append((x1 + x2) / 2)
+                lats_transito.append((y1 + y2) / 2)
+        
+        if lons_transito:
+            scatter_transito = ax.scatter(lons_transito, lats_transito, 
+                                          c='red', s=40, marker='x', 
+                                          linewidth=1.5, alpha=0.8, zorder=2)
+            novos_artists.append(scatter_transito)
+    except Exception as e:
+        print(f"Erro visual trânsito: {e}")
+
     if pedidos_pendentes:
         try:
             lons_cli = [p.origem_coords[1] for p in pedidos_pendentes]
             lats_cli = [p.origem_coords[0] for p in pedidos_pendentes]
             
             scatter_cli = ax.scatter(lons_cli, lats_cli, 
-                                     c='cyan', s=150, marker='P', 
+                                     c='cyan', s=120, marker='P', 
                                      edgecolors='black', linewidth=1, zorder=8)
             novos_artists.append(scatter_cli)
         except: pass
 
     if frota_taxis:
-        
         try:
             destinos_lons = []
             destinos_lats = []
@@ -136,10 +158,11 @@ def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anterio
             
             if destinos_lons:
                 scatter_dest = ax.scatter(destinos_lons, destinos_lats,
-                                          c='orange', s=150, marker='X', # Marca com X
+                                          c='orange', s=100, marker='X', 
                                           edgecolors='black', linewidth=1, zorder=9)
                 novos_artists.append(scatter_dest)
         except: pass
+
         try:
             texto_estado = "ESTADO DA FROTA:\n"
             texto_estado += f"{'ID':<4} {'Auto(km)':<8}    {'Custo':<8}     {'CO2':<6}   {'Estado'}\n"
@@ -150,6 +173,8 @@ def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anterio
                 
                 estado_str = "Livre"
                 if t.estado == "a_abastecer": estado_str = "->Bomba"
+                elif t.estado == "a_recolher": estado_str = "->Cliente"
+                elif t.estado == "ocupado": estado_str = "Ocupado"
                 elif t.estado == "sem_energia": estado_str = "MORTO"
                 
                 linha = f"{t.id:<4} {km_restantes:>7.1f}   {t.custo_total:>7.2f}€   {t.emissoes_CO2:>5.0f}kg       {estado_str}\n"
@@ -168,17 +193,17 @@ def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anterio
             pass
 
         try:
-        
             if taxi_image is not None:
                 for t in frota_taxis:
                     if t.posicao_atual in G.nodes and t.estado != "sem_energia":
                         x = G.nodes[t.posicao_atual]['x']
                         y = G.nodes[t.posicao_atual]['y']
-                        oi = OffsetImage(taxi_image, zoom=0.08)
+                        oi = OffsetImage(taxi_image, zoom=0.06) 
                         ab = AnnotationBbox(oi, (x, y), xycoords='data', frameon=False, zorder=10)
                         ax.add_artist(ab)
                         novos_artists.append(ab)
             else:
+                
                 lons, lats = [], []
                 for t in frota_taxis:
                     if t.posicao_atual in G.nodes and t.estado != "sem_energia":
@@ -192,6 +217,6 @@ def desenhar_frame_animado(ax, G, frota_taxis,pedidos_pendentes, artists_anterio
         except Exception:
             pass
     
-    plt.pause(0.05) 
+    plt.pause(0.01) 
     
     return novos_artists, True

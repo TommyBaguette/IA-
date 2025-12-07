@@ -38,8 +38,8 @@ def analisar_frota():
     for taxi in sim.frota_taxis:
         tipo = "eletrico" if taxi.tipo_motor == "eletrico" else "combustao"
 
-        taxi.autonomia_maxima = taxi.autonomia_maxima / 10000.0
-        taxi.autonomia_atual = taxi.autonomia_atual / 10000.0
+        taxi.autonomia_maxima = taxi.autonomia_maxima / 15000.0
+        taxi.autonomia_atual = taxi.autonomia_atual / 15000.0
         print(f"Taxi ID {taxi.id}: Autonomia {taxi.autonomia_atual:.2f} km / {taxi.autonomia_maxima:.2f} km")
         km_percorridos = 0
         

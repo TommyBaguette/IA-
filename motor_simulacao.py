@@ -1,4 +1,3 @@
-# motor_simulacao.py
 import random
 import json
 import os
@@ -8,6 +7,7 @@ from taxi import Taxi
 import utils as ut
 from alocacao import GestorAlocacao
 from gerador_pedidos import GeradorPedidos
+from gestor_transito import GestorTransito
 import variaveis as var
 
 class MotorSimulacao:
@@ -21,8 +21,10 @@ class MotorSimulacao:
         self.pedidos_completados = 0
         self.todos_nos = list(self.G.nodes)
         self.algoritmo_escolha = algoritmo
+        
         self.despachante = GestorAlocacao(self.G, self.FATOR_CONSUMO)
         self.gerador = GeradorPedidos(self.G)
+        self.gestor_trafego = GestorTransito(self.G) 
 
     def criar_frota(self, config_file="frota.json"):
         if not os.path.exists(config_file): 
@@ -41,7 +43,6 @@ class MotorSimulacao:
                 capacidade=config_taxi["capacidade"],
                 autonomia_max=config_taxi["autonomia_max"]
             )
-
             novo_taxi.autonomia_atual = novo_taxi.autonomia_maxima 
             self.frota_taxis.append(novo_taxi)
         
@@ -65,9 +66,7 @@ class MotorSimulacao:
 
             threshold = taxi.autonomia_maxima * var.MARGEM_SEGURANCA
             if taxi.autonomia_atual <= threshold:
-                
                 lista = self.pois_frota.get('carregadores_eletricos', []) if taxi.tipo_motor == 'eletrico' else self.pois_frota.get('bombas_gasolina', [])
-                
                 dest_id, dist_metros = ut.encontrar_poi_mais_proximo(self.G, taxi.posicao_atual, lista)
                 
                 if dest_id is None: continue
@@ -82,6 +81,8 @@ class MotorSimulacao:
                         taxi.rota_atual = caminho
 
     def executar_passo(self):
+        self.gestor_trafego.atualizar_trafego()
+
         self.gerador.tentar_gerar(self.passo_atual, self.pedidos_pendentes)
         
         self.despachante.processar_alocacao(self.frota_taxis, self.pedidos_pendentes, self)
@@ -125,7 +126,6 @@ class MotorSimulacao:
                 proximo = None
                 if taxi.rota_atual: proximo = taxi.rota_atual.pop(0)
                 elif taxi.estado == "livre":
-                    
                     vizinhos = list(self.G.neighbors(taxi.posicao_atual))
                     if vizinhos: proximo = random.choice(vizinhos)
                 

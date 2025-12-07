@@ -1,4 +1,3 @@
-# alocacao.py
 import networkx as nx
 import utils as ut
 
@@ -66,4 +65,4 @@ class GestorAlocacao:
                     
                     tag = "[PREMIUM]" if pedido.premium else ""
                     tag += "[ECO]" if pedido.eco_friendly else ""
-                    print(f"-> Atribuído {pedido.id} {tag} ao Taxi {melhor_taxi.id} ({melhor_taxi.tipo_motor})")
+                    #print(f"-> Atribuído {pedido.id} {tag} ao Taxi {melhor_taxi.id} ({melhor_taxi.tipo_motor})")

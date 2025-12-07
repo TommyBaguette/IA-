@@ -6,19 +6,6 @@ import motor_simulacao as ms
 import view as vc 
 import variaveis as var
 
-# --- CONFIGURAÇÕES ---
-PASSOS_SIMULACAO = var.PASSOS_SIMULACAO
-SEED_FIXA = var.SEED_PADRAO
-ALGORITMOS_A_TESTAR = ["dijkstra", "astar", "greedy", "bfs", "dfs"]
-
-import time
-import random
-import csv
-import gestor_mapa as gm
-import motor_simulacao as ms
-import view as vc 
-import variaveis as var
-
 PASSOS_SIMULACAO = var.PASSOS_SIMULACAO
 SEED_FIXA = var.SEED_PADRAO
 ALGORITMOS_A_TESTAR = ["dijkstra", "astar", "greedy", "bfs", "dfs"]

@@ -8,8 +8,6 @@ class GeradorPedidos:
         self.G = G
         self.todos_nos = list(self.G.nodes)
         self.pesos_nos = []
-        
-        # Pré-calcula Hotspots no arranque
         self._calcular_pesos_hotspots()
 
     def _calcular_pesos_hotspots(self):

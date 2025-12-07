@@ -1,6 +1,6 @@
 import heapq
 import utils as ut
-import networkx as nx
+import networkx as nx 
 
 def calcular_custo_caminho(G, path):
     custo = 0
@@ -12,9 +12,7 @@ def calcular_custo_caminho(G, path):
             custo += 0
     return custo
 
-
 def procura_DFS(G, start, finish):
-
     stack = [(start, [start])]
     visited = set()
 
@@ -76,8 +74,10 @@ def procura_AStar(G, start, end):
         open_set.remove(current)
 
         for vizinho in G.neighbors(current):
-            try: peso = G[current][vizinho][0]['length']
-            except: peso = 1
+            try: 
+                peso = G[current][vizinho][0].get('peso_dinamico', G[current][vizinho][0]['length'])
+            except: 
+                peso = 1
             
             tentative_g_score = g_score[current] + peso
 
@@ -113,7 +113,10 @@ def procura_Greedy(G, start, end):
     return None
 
 def procura_Dijkstra(G, start, end):
-
+    """
+    Dijkstra Manual usando Priority Queue (heapq).
+    Agora sensível ao trânsito ('peso_dinamico').
+    """
     priority_queue = [(0, start)]
     min_dist = {node: float('inf') for node in G.nodes}
     min_dist[start] = 0
@@ -135,8 +138,11 @@ def procura_Dijkstra(G, start, end):
         visited.add(current_node)
 
         for vizinho in G.neighbors(current_node):
-            try: weight = G[current_node][vizinho][0]['length']
-            except: weight = 1
+            # ALTERAÇÃO: Usa o peso dinâmico (com trânsito) se existir
+            try: 
+                weight = G[current_node][vizinho][0].get('peso_dinamico', G[current][vizinho][0]['length'])
+            except: 
+                weight = 1
             
             new_cost = current_cost + weight
 
