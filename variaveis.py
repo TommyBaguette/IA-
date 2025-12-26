@@ -18,7 +18,7 @@ C02_EMISSAO_COMB_KM = 0.11  # kg CO2 por km para veículos a combustão !
 C02_EMISSAO_ELET_KM = 0     # kg CO2 por km para veículos elétricos !
 
 #Duração da simulação em passos
-PASSOS_SIMULACAO = 3000   
+PASSOS_SIMULACAO = 1000   
 
 #Probabilidades de diferentes pedidos
 PROB_PREMIUM = 0.20

@@ -22,7 +22,16 @@ def analisar_frota():
     if not sucesso:
         vc.mostrar_erro(f"Erro ao criar frota: {msg}")
         return
-    
+
+    for taxi in sim.frota_taxis:
+        if taxi.tipo_motor == "eletrico":
+           
+            taxi.autonomia_maxima = 20000.0 
+            taxi.autonomia_atual = 20000.0  
+        else:
+            taxi.autonomia_maxima = 20000.0
+            taxi.autonomia_atual = 20000.0
+
     vc.mostrar_inicio_analise(ALGORITMO, PASSOS, SEED, len(sim.frota_taxis))
 
     start = time.time()
@@ -31,18 +40,14 @@ def analisar_frota():
     tempo_total = time.time() - start
 
     stats = {
-        "eletrico":   {"qtd": 0, "km": 0.0, "custo": 0.0, "co2": 0.0, "viagens": 0},
-        "combustao":  {"qtd": 0, "km": 0.0, "custo": 0.0, "co2": 0.0, "viagens": 0}
+        "eletrico":   {"qtd": 0, "km": 0.0, "custo": 0.0, "co2": 0.0, "viagens": 0, "parado": 0},
+        "combustao":  {"qtd": 0, "km": 0.0, "custo": 0.0, "co2": 0.0, "viagens": 0, "parado": 0}
     }
 
     for taxi in sim.frota_taxis:
         tipo = "eletrico" if taxi.tipo_motor == "eletrico" else "combustao"
-
-        taxi.autonomia_maxima = taxi.autonomia_maxima / 15000.0
-        taxi.autonomia_atual = taxi.autonomia_atual / 15000.0
-        print(f"Taxi ID {taxi.id}: Autonomia {taxi.autonomia_atual:.2f} km / {taxi.autonomia_maxima:.2f} km")
-        km_percorridos = 0
         
+        km_percorridos = 0
         if taxi.custo_por_km > 0:
             km_percorridos = taxi.custo_total / taxi.custo_por_km
         
@@ -51,8 +56,9 @@ def analisar_frota():
         stats[tipo]["custo"] += taxi.custo_total
         stats[tipo]["co2"] += taxi.emissoes_CO2
         stats[tipo]["viagens"] += taxi.viagens_feitas
-        if "parado" not in stats[tipo]: stats[tipo]["parado"] = 0
-        stats[tipo]["parado"] += taxi.ticks_a_carregar
+        
+        if hasattr(taxi, 'ticks_a_carregar'):
+             stats[tipo]["parado"] += taxi.ticks_a_carregar
 
     vc.mostrar_relatorio_final_frota(stats, tempo_total)
 

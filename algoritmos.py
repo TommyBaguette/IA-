@@ -1,15 +1,22 @@
 import heapq
+from collections import deque
 import utils as ut
 import networkx as nx 
+
+def obter_peso(G, u, v):
+   
+    try:
+        
+        dados = G[u][v][0]
+        return dados.get('peso_dinamico', dados.get('length', 1))
+    except (KeyError, IndexError, TypeError):
+        return 1
 
 def calcular_custo_caminho(G, path):
     custo = 0
     for i in range(len(path) - 1):
         u, v = path[i], path[i+1]
-        try:
-            custo += G[u][v][0]['length']
-        except:
-            custo += 0
+        custo += obter_peso(G, u, v)
     return custo
 
 def procura_DFS(G, start, finish):
@@ -18,24 +25,33 @@ def procura_DFS(G, start, finish):
 
     while stack:
         (vertex, path) = stack.pop()
-        if vertex in visited: continue
-        visited.add(vertex)
+        
+        if vertex == finish:
+            return path
 
-        if vertex == finish: return path
+        if vertex in visited:
+            continue
+        
+        visited.add(vertex)
 
         for neighbor in G.neighbors(vertex):
             if neighbor not in visited:
+               
                 stack.append((neighbor, path + [neighbor]))
+    
     return None
 
 def procura_BFS(G, start, finish):
-    queue = [start]
+
+    queue = deque([start])
     visited = {start}
     parents = {start: None}
 
     while queue:
-        current = queue.pop(0)
-        if current == finish: break
+        current = queue.popleft()
+        
+        if current == finish: 
+            break
 
         for vizinho in G.neighbors(current):
             if vizinho not in visited:
@@ -43,7 +59,8 @@ def procura_BFS(G, start, finish):
                 parents[vizinho] = current
                 queue.append(vizinho)
 
-    if finish not in parents: return None
+    if finish not in parents: 
+        return None
 
     path = []
     curr = finish
@@ -53,15 +70,21 @@ def procura_BFS(G, start, finish):
     return path
 
 def procura_AStar(G, start, end):
-    open_set = {start}
+
+    count = 0
+    open_set = [(0, count, start)]
+    
     g_score = {node: float('inf') for node in G.nodes}
     g_score[start] = 0
-    f_score = {node: float('inf') for node in G.nodes}
-    f_score[start] = ut.heuristica(G, start, end)
+    
     parents = {}
+    open_set_hash = {start}
 
     while open_set:
-        current = min(open_set, key=lambda n: f_score[n])
+        _, _, current = heapq.heappop(open_set)
+        
+        if current in open_set_hash:
+            open_set_hash.remove(current)
 
         if current == end:
             path = []
@@ -71,60 +94,66 @@ def procura_AStar(G, start, end):
             path.insert(0, start)
             return path
 
-        open_set.remove(current)
-
         for vizinho in G.neighbors(current):
-            try: 
-                peso = G[current][vizinho][0].get('peso_dinamico', G[current][vizinho][0]['length'])
-            except: 
-                peso = 1
-            
+        
+            peso = obter_peso(G, current, vizinho)
             tentative_g_score = g_score[current] + peso
 
             if tentative_g_score < g_score[vizinho]:
                 parents[vizinho] = current
                 g_score[vizinho] = tentative_g_score
-                f_score[vizinho] = g_score[vizinho] + ut.heuristica(G, vizinho, end)
-                open_set.add(vizinho)
+                f_score = tentative_g_score + ut.heuristica(G, vizinho, end)
+                
+                if vizinho not in open_set_hash:
+                    count += 1
+                    heapq.heappush(open_set, (f_score, count, vizinho))
+                    open_set_hash.add(vizinho)
     return None
 
 def procura_Greedy(G, start, end):
-    open_list = {start}
-    closed_list = set()
+
+    count = 0
+    priority_queue = [(ut.heuristica(G, start, end), count, start)]
+    
+    visited = set()
     parents = {}
 
-    while open_list:
-        n = min(open_list, key=lambda x: ut.heuristica(G, x, end))
-        if n == end:
+    while priority_queue:
+        _, _, current = heapq.heappop(priority_queue)
+
+        if current == end:
             path = []
-            while n in parents:
-                path.insert(0, n)
-                n = parents[n]
+            while current in parents:
+                path.insert(0, current)
+                current = parents[current]
             path.insert(0, start)
             return path
 
-        open_list.remove(n)
-        closed_list.add(n)
+        if current in visited:
+            continue
+        visited.add(current)
 
-        for vizinho in G.neighbors(n):
-            if vizinho not in open_list and vizinho not in closed_list:
-                open_list.add(vizinho)
-                parents[vizinho] = n
+        for vizinho in G.neighbors(current):
+            if vizinho not in visited and vizinho not in parents:
+                parents[vizinho] = current
+                count += 1
+                h_score = ut.heuristica(G, vizinho, end)
+                heapq.heappush(priority_queue, (h_score, count, vizinho))
     return None
 
 def procura_Dijkstra(G, start, end):
-    """
-    Dijkstra Manual usando Priority Queue (heapq).
-    Agora sensível ao trânsito ('peso_dinamico').
-    """
-    priority_queue = [(0, start)]
+
+    count = 0
+    priority_queue = [(0, count, start)]
+    
     min_dist = {node: float('inf') for node in G.nodes}
     min_dist[start] = 0
+    
     parents = {}
     visited = set()
 
     while priority_queue:
-        current_cost, current_node = heapq.heappop(priority_queue)
+        current_cost, _, current_node = heapq.heappop(priority_queue)
 
         if current_node == end:
             path = []
@@ -134,22 +163,23 @@ def procura_Dijkstra(G, start, end):
             path.insert(0, start)
             return path
 
-        if current_node in visited: continue
+        if current_node in visited:
+            continue
         visited.add(current_node)
 
+        if current_cost > min_dist[current_node]:
+            continue
+
         for vizinho in G.neighbors(current_node):
-            # ALTERAÇÃO: Usa o peso dinâmico (com trânsito) se existir
-            try: 
-                weight = G[current_node][vizinho][0].get('peso_dinamico', G[current][vizinho][0]['length'])
-            except: 
-                weight = 1
-            
+
+            weight = obter_peso(G, current_node, vizinho)
             new_cost = current_cost + weight
 
             if new_cost < min_dist[vizinho]:
                 min_dist[vizinho] = new_cost
                 parents[vizinho] = current_node
-                heapq.heappush(priority_queue, (new_cost, vizinho))
+                count += 1
+                heapq.heappush(priority_queue, (new_cost, count, vizinho))
     return None
 
 def calcular_rota(nome_algoritmo, G, origem, destino):
