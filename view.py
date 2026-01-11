@@ -48,14 +48,6 @@ def verificar_ficheiros_necessarios(ficheiros):
             return False
     return True
 
-'''def mostrar_estado_frota(tick, frota_taxis):
-    print(f"\n--- TICK {tick} ---")
-    for t in frota_taxis:
-        km = t.autonomia_atual / 1000.0
-        missao = "-> A CARREGAR" if t.estado == "a_abastecer" else ""
-        if t.estado == "sem_energia": missao = "!!! MORT !!!"
-        print(f"Taxi {t.id} [{t.tipo_motor[0].upper()}]: {km:.2f} km | {t.estado} {missao}") '''
-
 def mostrar_inicio_benchmark(passos, seed):
     print(f"\n=== INICIANDO BENCHMARK DE PERFORMANCE ===")
     print(f"Configuração: {passos} passos | Seed: {seed}")
@@ -65,15 +57,19 @@ def mostrar_progresso_benchmark(alg, tempo, viagens, kms):
     print(f"   >> {alg.upper():<10} | Tempo: {tempo:.2f}s | Viagens: {viagens} | Distância: {kms:.1f} km")
 
 def mostrar_tabela_benchmark(resultados):
-    print("\n" + "="*105)
-    print(f"{'ALGORITMO':<12} | {'TEMPO(s)':<10} | {'VIAGENS':<8} | {'KMs TOTAIS':<12} | {'CUSTO(€)':<10} | {'PED/KM':<10} | {'€/VIAGEM':<10}")
-    print("-" * 105)
+    largura = 135
+    print("\n" + "="*largura)
+    
+    header = f"{'ALGORITMO':<12} | {'TEMPO(s)':<9} | {'VIAGENS':<7} | {'KMs TOT':<10} | {'CUSTO(€)':<9} | {'€/VIAGEM':<9} | {'ESPERA(t)':<9} | {'OCUPA(%)':<9} | {'FALHADOS':<8}"
+    print(header)
+    print("-" * largura)
     
     for r in resultados:
-        print(f"{r['Algoritmo']:<12} | {r['Tempo (s)']:<10} | {r['Viagens']:<8} | "
-              f"{r['KMs Totais']:<12} | {r['Custo (€)']:<10} | {r['Pedidos/Km']:<10} | {r['Eficiência (€/V)']:<10}")
-    print("="*105)
-    
+        linha = (f"{r['Algoritmo']:<12} | {r['Tempo(s)']:<9} | {r['Viagens']:<7} | "
+                 f"{r['KMs Totais']:<10} | {r['Custo Total']:<9} | {r['Custo/Viagem']:<9} | "
+                 f"{r['Espera Media']:<9} | {r['Ocupacao (%)']:<9} | {r['Falhados']:<8}")
+        print(linha)
+    print("="*largura)
 
 def mostrar_inicio_analise(algoritmo, passos, seed, n_frota):
     print(f"\n=== ANÁLISE: ELÉTRICOS vs COMBUSTÃO ===")

@@ -42,7 +42,8 @@ class GeradorPedidos:
                 destino=destino,
                 origem_coords=origem_coords,
                 premium=is_premium,
-                eco=is_eco
+                eco=is_eco,
+                tick_criacao=passo_atual
             )
             
             lista_pendentes.append(novo_pedido)

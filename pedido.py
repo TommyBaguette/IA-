@@ -1,5 +1,5 @@
 class Pedido:
-    def __init__(self, id_pedido, origem, destino, origem_coords, premium=False, eco=False):
+    def __init__(self, id_pedido, origem, destino, origem_coords, premium=False, eco=False, tick_criacao=0):
         self.id = id_pedido
         self.origem = origem
         self.destino = destino
@@ -7,6 +7,8 @@ class Pedido:
         self.estado = "pendente"
         self.premium = premium
         self.eco_friendly = eco
+        self.tick_criacao = tick_criacao
+        self.tick_recolha = None
 
     def __repr__(self):
         p_str = "[PREMIUM]" if self.premium else ""

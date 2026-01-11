@@ -1,80 +1,87 @@
 import time
-import random
 import csv
 import gestor_mapa as gm
 import motor_simulacao as ms
 import view as vc 
 import variaveis as var
+import random
 
-PASSOS_SIMULACAO = var.PASSOS_SIMULACAO
-SEED_FIXA = var.SEED_PADRAO
+# Configurações do Benchmark
+PASSOS = var.PASSOS_SIMULACAO 
+SEED = var.SEED_PADRAO
 ALGORITMOS_A_TESTAR = ["dijkstra", "astar", "greedy", "bfs", "dfs"]
 
 def correr_benchmark():
-    vc.mostrar_inicio_benchmark(PASSOS_SIMULACAO, SEED_FIXA)
-    
+
     G, pois_frota = gm.carregar_dados()
-    if G is None:
-        vc.mostrar_erro("Mapa não encontrado. Executa o setup primeiro.")
+    
+    if not G:
+        vc.mostrar_erro("Mapa não encontrado.")
         return
 
     resultados = []
 
-    for alg in ALGORITMOS_A_TESTAR:
-        random.seed(SEED_FIXA)
-        
-        sim = ms.MotorSimulacao(G, pois_frota, algoritmo=alg)
-        sucesso, msg = sim.criar_frota(config_file="frota.json")
-        
-        if not sucesso:
-            vc.mostrar_erro(f"Erro frota: {msg}")
-            continue
+    vc.mostrar_inicio_benchmark(PASSOS, SEED)
 
+    for algo in ALGORITMOS_A_TESTAR:
+       
+        random.seed(SEED)
+        
+        sim = ms.MotorSimulacao(G, pois_frota, algoritmo=algo)
+        sim.criar_frota() 
+        
+        acumulador_ocupacao = 0 
+        
         start_time = time.time()
-        for _ in range(PASSOS_SIMULACAO):
+        
+        for _ in range(PASSOS):
             sim.executar_passo()
+            
+            taxis_ocupados_agora = sum(1 for t in sim.frota_taxis if t.estado == "ocupado")
+            acumulador_ocupacao += taxis_ocupados_agora
+
         tempo_execucao = time.time() - start_time
-        total_custo = 0.0
-        total_km = 0.0
-        
-        for t in sim.frota_taxis:
-            total_custo += t.custo_total
-            if t.custo_por_km > 0:
-                total_km += (t.custo_total / t.custo_por_km)
 
-        viagens = sim.pedidos_completados
+        # --- CÁLCULO DAS MÉTRICAS DO ENUNCIADO ---
         
-        pedidos_por_km = (viagens / total_km) if total_km > 0 else 0.0
+        total_viagens = sim.pedidos_completados
+        total_km = sum(t.custo_total / t.custo_por_km for t in sim.frota_taxis if t.custo_por_km > 0)
+        custo_total = sum(t.custo_total for t in sim.frota_taxis)
         
-        eficiencia_custo = round(total_custo / viagens, 2) if viagens > 0 else 0.0
+        custo_por_viagem = (custo_total / total_viagens) if total_viagens > 0 else 0.0
+        
+        lista_esperas = getattr(sim, 'tempos_espera_totais', [])
+        tempo_medio_espera = sum(lista_esperas) / len(lista_esperas) if lista_esperas else 0.0
+        
+        total_ticks_possiveis = len(sim.frota_taxis) * PASSOS
+        taxa_ocupacao = (acumulador_ocupacao / total_ticks_possiveis) * 100 if total_ticks_possiveis > 0 else 0.0
+        
+        pedidos_falhados = len(sim.pedidos_pendentes)
 
-        vc.mostrar_progresso_benchmark(alg, tempo_execucao, viagens, total_km)
-
-        dados = {
-            "Algoritmo": alg.upper(),
-            "Tempo (s)": round(tempo_execucao, 4),
-            "Viagens": viagens,
+        resultados.append({
+            "Algoritmo": algo.upper(),
+            "Tempo(s)": round(tempo_execucao, 4),
+            "Viagens": total_viagens,
             "KMs Totais": round(total_km, 1),
-            "Custo (€)": round(total_custo, 2),
-            "Pedidos/Km": round(pedidos_por_km, 4),
-            "Eficiência (€/V)": eficiencia_custo
-        }
-        resultados.append(dados)
+            "Custo Total": round(custo_total, 2),
+            "Custo/Viagem": round(custo_por_viagem, 2),
+            "Espera Media": round(tempo_medio_espera, 1),
+            "Ocupacao (%)": round(taxa_ocupacao, 1),
+            "Falhados": pedidos_falhados
+        })
 
     vc.mostrar_tabela_benchmark(resultados)
-    guardar_csv(resultados)
 
-def guardar_csv(resultados):
-    if not resultados: return
-    filename = "resultados_benchmark.csv"
+    nome_csv = "resultados_benchmark_final.csv"
     try:
-        with open(filename, 'w', newline='', encoding='utf-8') as f:
-            dict_writer = csv.DictWriter(f, fieldnames=resultados[0].keys())
+        keys = resultados[0].keys()
+        with open(nome_csv, 'w', newline='') as f:
+            dict_writer = csv.DictWriter(f, keys)
             dict_writer.writeheader()
             dict_writer.writerows(resultados)
-        vc.mostrar_sucesso(f"CSV guardado em '{filename}'")
+        vc.mostrar_sucesso(f"Relatório completo guardado em '{nome_csv}'")
     except Exception as e:
-        vc.mostrar_erro(f"Falha ao guardar CSV: {e}")
+        vc.mostrar_erro(f"Ao guardar CSV: {e}")
 
 if __name__ == "__main__":
     correr_benchmark()

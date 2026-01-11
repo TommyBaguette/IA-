@@ -21,6 +21,7 @@ class MotorSimulacao:
         self.pedidos_completados = 0
         self.todos_nos = list(self.G.nodes)
         self.algoritmo_escolha = algoritmo
+        self.tempos_espera_totais = []
         
         self.despachante = GestorAlocacao(self.G, self.FATOR_CONSUMO)
         self.gerador = GeradorPedidos(self.G)
@@ -100,8 +101,12 @@ class MotorSimulacao:
                         taxi.objetivo_atual = None
                     continue 
                 elif taxi.estado == "a_recolher":
+                    taxi.pedido_atual.tick_recolha = self.passo_atual 
+                    tempo_espera = self.passo_atual - taxi.pedido_atual.tick_criacao
+                    self.tempos_espera_totais.append(tempo_espera)
                     if taxi.pedido_atual in self.pedidos_pendentes:
                         self.pedidos_pendentes.remove(taxi.pedido_atual)
+                        
                     rota, _ = self.encontrar_caminho(taxi.posicao_atual, taxi.destino_passageiro)
                     if rota:
                         if len(rota)>0 and rota[0] == taxi.posicao_atual: rota.pop(0)
